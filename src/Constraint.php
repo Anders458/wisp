@@ -4,11 +4,12 @@ namespace Wisp;
 
 use Durt\Log;
 use SplStack;
+use Stringable;
 use Wisp\Http\Request;
 use Wisp\Url\Parse;
 use Wisp\Url\Pattern;
 
-class Constraint
+class Constraint implements Stringable
 {
    protected ?RouteGroup $parent;
 
@@ -274,5 +275,38 @@ class Constraint
    {
       $this->subdomains [] = $subdomain;
       return $this;
+   }
+
+   public function toString () : string
+   {
+      $form = [];
+
+      foreach ([
+         'methods',
+         'protocols',
+         'auths',
+         'ports',
+         'subdomains',
+         'domains'
+      ] as $constraint) {
+         if (!empty ($this->$constraint)) {
+            $form [] = ucfirst ($constraint) . ' = ' . join (' | ', $this->$constraint);
+         }
+      }
+
+      if (!empty ($fullPaths = $this->getFullPaths ())) {
+         $form [] = 'Paths: ' . join (' | ', $fullPaths);
+      }
+
+      if (empty ($form)) {
+         return 'None';
+      }
+      
+      return implode (', ', $form);
+   }
+
+   public function __toString () : string
+   {
+      return $this->toString ();
    }
 }

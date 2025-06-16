@@ -6,7 +6,7 @@ class Util
 {
    public static function runWithHooks (Invokable $invokable) : void
    {
-      $container = Wisp::container ();
+      $container = Container::get ();
 
       if ($invokable->hasMethod ('before')) {
          $container->run ($invokable->rebind ('before'));

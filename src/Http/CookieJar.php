@@ -52,4 +52,9 @@ class CookieJar implements ArrayAccess, IteratorAggregate
    {
       unset ($this->cookies [$offset]);
    }
+
+   public function toArray () : array
+   {
+      return $this->cookies;
+   }
 }

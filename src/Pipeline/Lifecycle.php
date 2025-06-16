@@ -2,7 +2,7 @@
 
 namespace Wisp\Pipeline;
 
-enum Stage : string
+enum Lifecycle : string
 {
    case before = 'before';
    case after  = 'after';

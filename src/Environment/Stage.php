@@ -2,7 +2,7 @@
 
 namespace Wisp\Environment;
 
-enum Stage: string
+enum Stage : string
 {
    case development = 'development';
    case staging     = 'staging';

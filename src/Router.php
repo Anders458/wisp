@@ -3,9 +3,11 @@
 namespace Wisp;
 
 use Exception;
+use Wisp\Environment\Runtime;
 use Wisp\Http\Request;
 use Wisp\Http\Response;
-use Wisp\Pipeline\Stage;
+use Wisp\Pipeline\Lifecycle;
+use Wisp\Util\Logger;
 
 class Router
 {
@@ -14,13 +16,16 @@ class Router
 
    public function __construct ()
    {
-      $this->root = new RouteGroup ($this, null, '');
+      $this->root = new RouteGroup ($this, null);
       $this->routes = [];
    }
 
    public function dispatch (?Request $request = null) : Response
    {
-      $container = Wisp::container ();
+      $container = Container::get ();
+
+      $logger = $container->resolve (Logger::class);
+      $runtime = $container->resolve (Runtime::class);
 
       if (!$request) {
          $request = new Request ();
@@ -28,21 +33,35 @@ class Router
 
       $response = $request->response;
 
-      $container->bind (Container::class, fn () => $container);
-      $container->bind (Request::class, fn () => $request);
-      $container->bind (Response::class, fn () => $response);
-      $container->bind (Router::class, fn () => $this);
+      $container
+         ->bind (Request::class, fn () => $request)
+         ->bind (Response::class, fn () => $response)
+         ->bind (Router::class, fn () => $this);
 
       $queue = [];
       $queue [] = $this->root;
 
       $matches = [];
 
+      $numRoutes = count ($this->routes);
+
+      $logger->debug ('[Wisp] [Router] Router processing incoming request against {numRoutes} registered route' . ($numRoutes === 1 ? '' : 's'), [
+         'request' => $request->toArray (),
+         'numRoutes' => $numRoutes
+      ]);
+
       while (!empty ($queue)) {
          $constraint = array_shift ($queue);
 
+         $logger->debug ('[Wisp] [Router] Trying to match {type} with the following constraints: {constraints}', [
+            'type' => get_class ($constraint),
+            'constraints' => $constraint->toString ()
+         ]);
+
          if (($params = $constraint->matches ($request)) !== false) {
             if ($constraint instanceof Route) {
+               $logger->debug ('[Wisp] [Router] Route matched');
+
                $matches [] = [
                   'route'  => $constraint,
                   'params' => $params
@@ -63,8 +82,15 @@ class Router
       $actions = [];
 
       if (empty ($matches)) {
+         $logger->debug ('[Wisp] [Router] No routes matched the request');
          $response->status (404);
       } else {
+         $numMatches = count ($matches);
+
+         $logger->debug ('[Wisp] [Router] Found {numMatches} matching route' . ($numMatches === 1 ? '' : 's'), [
+            'numMatches' => $numMatches
+         ]);
+
          usort (
             $matches, 
             fn ($matchX, $matchY) => 
@@ -82,11 +108,11 @@ class Router
 
       $actions = array_merge (
          $actions,
-         $route->getActions (Stage::before)
+         $route->getActions (Lifecycle::before)
       );
 
       if ($action) {         
-         $main = function (Response $response) use ($container, $action) {
+         $main = function (Response $response) use ($action) {
             if ($response->code >= 400) {
                return;
             }
@@ -99,18 +125,35 @@ class Router
 
       $actions = array_merge (
          $actions,
-         $route->getActions (Stage::after)
+         $route->getActions (Lifecycle::after)
       );
 
-      foreach ($actions as $action) {
+      $numActions = count ($actions);
+
+      $logger->debug ('[Wisp] [Router] Running lifecycle {numActions} action' . ($numActions === 1 ? '' : 's'), [
+         'numActions' => $numActions
+      ]);
+
+      foreach ($actions as $index => $action) {
          if (!$response->sent) {
             try {
                $container->run ($action);
             } catch (Exception $e) {
+               $logger->error ($e);
                $response->status (500);
             }
+         } else {
+            $logger->debug ('[Wisp] [Router] Lifecycle aborting early after {index} / {numActions} action' . ($index === 0 ? '' : 's') . '', [
+               'index' => $index + 1,
+               'numActions' => $numActions
+            ]);
          }
       }
+
+      $logger->debug ('[Wisp] [Router] Response generated after {responseTime} seconds', [
+         'responseTime' => round ($runtime->elapsed (), 4),
+         'response' => $response->toArray ()
+      ]);
 
       if (!$response->sent) {       
          $response->send ();
@@ -131,7 +174,7 @@ class Router
 
    public function forward (string $to) : void
    {
-      $container = Wisp::container ();
+      $container = Container::get ();
 
       $container->resolve (Request::class)->forwarding = true;
 
@@ -165,9 +208,8 @@ class Router
       return $this;
    }
 
-   public function __call (string $method, array $args) : self
+   public function __call (string $method, array $args) : RouteGroup | Route
    {
-      $this->root->$method (... $args);
-      return $this;
+      return $this->root->$method (... $args);
    }
 }

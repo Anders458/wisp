@@ -2,16 +2,15 @@
 
 namespace Wisp\Http;
 
-use Exception;
+use Stringable;
+use Wisp\Container;
 use Wisp\Http\CookieJar;
 use Wisp\Http\Headers;
-use Wisp\Invokable;
+use Wisp\Http\Session;
 use Wisp\Route;
 use Wisp\Router;
 use Wisp\Url;
 use Wisp\Url\Parse;
-use Wisp\Util;
-use Wisp\Wisp;
 
 class Request
 {
@@ -22,13 +21,14 @@ class Request
    public array $query;
    public array $post;
 
-   public Headers  $headers;
+   public Headers $headers;
    public CookieJar $cookies;
 
    public Response $response;
    public bool $forwarding;
    
    public Context $context;
+   public ?Session $session;
 
    public function __construct (
       ?string $method = null, 
@@ -78,7 +78,7 @@ class Request
 
    public function forward (string $to) : void
    {
-      Wisp::container ()
+      Container::get ()
          ->resolve (Router::class)
          ->forward ($to);
    }
@@ -199,6 +199,19 @@ class Request
       }
 
       return $_SERVER ['HTTP_ORIGIN'] ?? null;
+   }
+
+   public function toArray () : array
+   {
+      return [
+         'method'  => $this->method,
+         'url'     => $this->url->toArray (),
+         'ip'      => $this->ip (),
+         'origin'  => $this->origin (),
+         'post'    => $this->post,
+         'headers' => $this->headers->toArray (),
+         'cookies' => $this->cookies->toArray ()
+      ];
    }
 
    // Dynamic properties may be set on the object.

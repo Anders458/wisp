@@ -2,21 +2,18 @@
     "name": "anders/wisp",
     "description": "Light as air, fast as wind - an ethereally simple PHP router",
     "type": "library",
-    "keywords": ["microframework", "router"],
+    "keywords": [ "microframework", "router" ],
     "license": "MIT",
     "autoload": {
         "psr-4": {
             "Wisp\\": "src/"
-        }
+        },
+        "files": [
+            "src/Util/Functions.php"
+        ]
     },
     "require": {
         "php": "^8.2",
         "psr/log": "^3.0"
-    },
-    "scripts": {
-        "example": "php -S localhost:8888 example.php"
-    },
-    "config": {
-        "process-timeout": 0
     }
 }

@@ -16,6 +16,11 @@ class Container
    private array $cache = [];
    private array $transient = [];
 
+   public function __construct ()
+   {
+      $this->bind (self::class, fn () => $this);
+   }
+
    public function bind (string $id, callable $resolver) : self
    {
       $this->bindings [$id] = $resolver;
@@ -51,7 +56,7 @@ class Container
 
    public static function get () : self
    {
-      if (!isset ($self::$default)) {
+      if (!isset (self::$default)) {
          self::$default = new self ();
       }
 

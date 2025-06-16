@@ -11,13 +11,15 @@ class RouteGroup extends Constraint
    private array $routes;
    private array $groups;
 
-   public function __construct (Router $router, ?self $parent, string $path)
+   public function __construct (Router $router, ?self $parent, ?string $path = null)
    {
       parent::__construct ($parent);
       
       $this->router = $router;
       
-      $this->path ($path);
+      if ($path) {
+         $this->path ($path);
+      }
 
       $this->routes = [];
       $this->groups = [];
@@ -70,5 +72,14 @@ class RouteGroup extends Constraint
    public function redirect (string $from, string $to, int $httpStatusCode) : self
    {
       return $this;
+   }
+
+   public function __call (string $method, array $args) : mixed
+   {
+      if ($this->parent) {
+         return $this->parent->$method (... $args);
+      } else {
+         return $this->router->$method (... $args);
+      }
    }
 }

@@ -5,7 +5,7 @@ namespace Wisp;
 use Exception;
 use Wisp\Http\Response;
 use Wisp\Middleware\CORS;
-use Wisp\Pipeline\Stage;
+use Wisp\Pipeline\Lifecycle;
 
 trait Pipeline
 {
@@ -15,22 +15,22 @@ trait Pipeline
    const GUARD_PRIORITY       = 20;
    const AFTER_HOOK_PRIORITY  = 10;
 
-   public array $stages = [
-      Stage::before->value => [],
-      Stage::after->value => []
+   public array $lifecycles = [
+      Lifecycle::before->value => [],
+      Lifecycle::after->value => []
    ];
 
    public function after (callable $action, int $priority = self::AFTER_HOOK_PRIORITY) : self
    {
-      return $this->pipe (Stage::after, $action, $priority);
+      return $this->pipe (Lifecycle::after, $action, $priority);
    }
 
    public function before (callable $action, int $priority = self::BEFORE_HOOK_PRIORITY) : self
    {
-      return $this->pipe (Stage::before, $action, $priority);
+      return $this->pipe (Lifecycle::before, $action, $priority);
    }
 
-   public function getActions (Stage $stage) : array
+   public function getActions (Lifecycle $lifecycle) : array
    {
       $actions = [];
       $current = $this;
@@ -38,7 +38,7 @@ trait Pipeline
       $depth = 0;
 
       while ($current) {
-         foreach ($current->stages [$stage->value] as $order => $step) {
+         foreach ($current->lifecycles [$lifecycle->value] as $order => $step) {
             $actions [] = $step + [
                'depth' => $depth,
                'order' => $order
@@ -51,16 +51,16 @@ trait Pipeline
 
       usort (
          $actions,
-         function ($actionX, $actionY) use ($stage) {
+         function ($actionX, $actionY) use ($lifecycle) {
             $x = $actionY ['priority'] <=> $actionX ['priority'];
 
             if ($x !== 0) {
                return $x;
             }
 
-            if ($stage === Stage::before) {
+            if ($lifecycle === Lifecycle::before) {
                $x = $actionY ['depth'] <=> $actionX ['depth'];
-            } else if ($stage === Stage::after) {
+            } else if ($lifecycle === Lifecycle::after) {
                $x = $actionX ['depth'] <=> $actionY ['depth'];
             }
 
@@ -68,9 +68,9 @@ trait Pipeline
                return $x;
             }
 
-            if ($stage === Stage::before) {
+            if ($lifecycle === Lifecycle::before) {
                return $actionX ['order'] <=> $actionY ['order'];            
-            } else if ($stage === Stage::after) {
+            } else if ($lifecycle === Lifecycle::after) {
                return $actionY ['order'] <=> $actionX ['order'];
             }
          }
@@ -79,34 +79,21 @@ trait Pipeline
       return array_column ($actions, 'action');
    }
 
-   public function guard (?string $guard = null) : Guard
+   public function guard () : Guard
    {
-      if (!$guard) {
-         $guard = Wisp::config () ['defaults.guard'];
-      }
-      
-      if (!isset (Wisp::config () ["guards.$guard"])) {
-         throw new Exception ('No definition found for guard: ' . $guard . '. Guards must be registered through Wisp::setup');
-      }
-
-      $guard = new Guard (
-         $this, 
-         $guard
-      );
-
+      $guard = new Guard ($this);
       $this->before ($guard, self::GUARD_PRIORITY);
-
       return $guard;
    }
 
    public function middleware ($middleware, int $priority = self::MIDDLEWARE_PRIORITY) : self
    {
-      if (method_exists ($middleware, Stage::before->value)) {
+      if (method_exists ($middleware, Lifecycle::before->value)) {
          $this->before (fn (Container $container) => 
             $container->run (Invokable::from ([ $middleware, 'before' ])), $priority);
       }
 
-      if (method_exists ($middleware, Stage::after->value)) {
+      if (method_exists ($middleware, Lifecycle::after->value)) {
          $this->after (fn (Container $container) =>
             $container->run (Invokable::from ([ $middleware, 'after' ])), $priority);
       }
@@ -129,9 +116,9 @@ trait Pipeline
       return $this;
    }
 
-   public function pipe (Stage $stage, callable $action, int $priority) : self
+   public function pipe (Lifecycle $lifecycle, callable $action, int $priority) : self
    {
-      $this->stages [$stage->value] [] = [
+      $this->lifecycles [$lifecycle->value] [] = [
          'action' => Invokable::from ($action),
          'priority' => $priority
       ];

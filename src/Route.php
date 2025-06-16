@@ -2,8 +2,6 @@
 
 namespace Wisp;
 
-use Exception;
-
 class Route extends Constraint
 {
    use Pipeline;

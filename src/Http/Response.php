@@ -2,11 +2,12 @@
 
 namespace Wisp\Http;
 
+use Wisp\Container;
+use Wisp\Environment\Runtime;
 use Wisp\Http;
 use Wisp\Http\CookieJar;
 use Wisp\Http\Headers;
 use Wisp\Url;
-use Wisp\Wisp;
 
 class Response
 {
@@ -76,7 +77,7 @@ class Response
       }
 
       if ($this->headers->has ('Content-Type', 'application/json')) {
-         print (json_encode ($this->body, Wisp::config () ['debug'] ? JSON_PRETTY_PRINT : 0));
+         print (json_encode ($this->body, Container::get ()->resolve (Runtime::class)->isDebug () ? JSON_PRETTY_PRINT : 0));
       } else {
          print ($this->body);
       }
@@ -84,7 +85,7 @@ class Response
       $this->sent = true;
    }
 
-   public function status (string | int $codeOrStatus = null) : self
+   public function status (string | int | null $codeOrStatus = null) : self
    {
       if (is_string ($codeOrStatus)) {
          $this->code = Http::code ($codeOrStatus);
@@ -95,5 +96,15 @@ class Response
       }
 
       return $this;
+   }
+
+   public function toArray () : array
+   {
+      return [
+         'code'    => $this->code,
+         'status'  => $this->status,
+         'headers' => $this->headers->toArray (),
+         'cookies' => $this->cookies->toArray ()
+      ];
    }
 }

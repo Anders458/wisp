@@ -2,7 +2,9 @@
 
 namespace Wisp;
 
-class Url
+use Stringable;
+
+class Url implements Stringable
 {
    public const ALL       = ~0;
    public const PROTOCOL  = 1 << 0;
@@ -25,6 +27,11 @@ class Url
    public ?string $path;
    public ?array $query;
    public ?string $fragment;
+
+   public function toArray () : array
+   {
+      return get_object_vars ($this);
+   }
 
    public function toString (int $flags = self::ALL, array $exclude = []) : string
    {
@@ -62,7 +69,7 @@ class Url
       }
 
       if ($flags & self::PORT) {
-         if (isset ($this->port)) {
+         if (isset ($this->port) && !str_ends_with ($url, ':' . $this->port)) {
             $url .= ':' . $this->port;
          }
       }
