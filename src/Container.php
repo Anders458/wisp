@@ -109,7 +109,13 @@ class Container
                throw new Exception ('Cannot resolve parameter without type hint or default value: ' . $parameter->getName ());
             }
          } else {
-            $dependencies [] = $this->resolve ($type->getName ());
+            try {
+               $dependency = $this->resolve ($type->getName ());
+            } catch (Exception $error) {
+               $dependency = $this->resolve ($parameter->getName ());
+            }
+
+            $dependencies [] = $dependency;
          }
       }
 

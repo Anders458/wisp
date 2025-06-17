@@ -201,6 +201,11 @@ class Request
       return $_SERVER ['HTTP_ORIGIN'] ?? null;
    }
 
+   public function userAgent () : ?string
+   {
+      return $_SERVER ['HTTP_USER_AGENT'];
+   }
+
    public function toArray () : array
    {
       return [
