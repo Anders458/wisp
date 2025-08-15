@@ -4,6 +4,7 @@ namespace Wisp;
 
 use Wisp\Environment\Runtime;
 use Wisp\Environment\Stage;
+use Wisp\Service\Flash;
 use Wisp\Util\Logger;
 
 class Wisp
@@ -25,7 +26,8 @@ class Wisp
 
       Container::get ()
          ->bind (Runtime::class, fn () => $runtime)
-         ->bind (Logger::class, fn () => new Logger ());
+         ->bind (Logger::class, fn () => new Logger ())
+         ->bind (Flash::class, fn () => new Flash ());
    }
 
    public static function url (array $params)

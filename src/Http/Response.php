@@ -7,6 +7,7 @@ use Wisp\Environment\Runtime;
 use Wisp\Http;
 use Wisp\Http\CookieJar;
 use Wisp\Http\Headers;
+use Wisp\Service\Flash;
 use Wisp\Url;
 
 class Response
@@ -41,6 +42,18 @@ class Response
    public function body (mixed $body) : self
    {
       $this->body = $body;
+      return $this;
+   }
+
+   public function error (string $message, ?int $code = null) : self
+   {
+      Container::get ()->resolve (Flash::class)->error ($message, $code);
+      return $this;
+   }
+
+   public function warning (string $message, ?int $code = null) : self
+   {
+      Container::get ()->resolve (Flash::class)->warning ($message, $code);
       return $this;
    }
 

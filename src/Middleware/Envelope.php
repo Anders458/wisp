@@ -5,6 +5,7 @@ namespace Wisp\Middleware;
 use Wisp\Environment\Runtime;
 use Wisp\Http\Request;
 use Wisp\Http\Response;
+use Wisp\Service\Flash;
 
 class Envelope
 {
@@ -13,7 +14,7 @@ class Envelope
       $response->headers ['Content-Type'] = 'application/json';
    }
 
-   public function after (Request $request, Response $response, Runtime $runtime)
+   public function after (Request $request, Response $response, Runtime $runtime, Flash $flash)
    {
       $envelope = [];
 
@@ -31,6 +32,14 @@ class Envelope
          'query' => $request->url->query,
          'params' => $request->params
       ];
+
+      if (!empty ($flash->errors) || !empty ($flash->warnings) || $flash->code !== 0) {
+         $envelope ['flash'] = [
+            'errors' => $flash->errors,
+            'warnings' => $flash->warnings,
+            'code' => $flash->code
+         ];
+      }
 
       $body = $response->body;
 
