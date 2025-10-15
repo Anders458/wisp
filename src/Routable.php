@@ -4,70 +4,58 @@ namespace Wisp;
 
 trait Routable
 {
-   public function connect (string $pattern, mixed $action) : Route
+   public function any (string $path, mixed $action) : Route
    {
-      return $this->add ([ 'CONNECT' ], $pattern, $action);
+      return $this->add ([ 'GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD' ], $path, $action);
    }
 
-   public function delete (string $pattern, mixed $action) : Route
+   public function connect (string $path, mixed $action) : Route
    {
-      return $this->add ([ 'DELETE' ], $pattern, $action);
+      return $this->add ([ 'CONNECT' ], $path, $action);
    }
 
-   public function get (string $pattern, mixed $action) : Route
+   public function delete (string $path, mixed $action) : Route
    {
-      return $this->add ([ 'GET' ], $pattern, $action);
+      return $this->add ([ 'DELETE' ], $path, $action);
    }
 
-   public function head (string $pattern, mixed $action) : Route
+   public function get (string $path, mixed $action) : Route
    {
-      return $this->add ([ 'HEAD' ], $pattern, $action);
+      return $this->add ([ 'GET' ], $path, $action);
    }
 
-   public function options (string $pattern, mixed $action) : Route
+   public function head (string $path, mixed $action) : Route
    {
-      return $this->add ([ 'OPTIONS' ], $pattern, $action);
+      return $this->add ([ 'HEAD' ], $path, $action);
    }
 
-   public function patch (string $pattern, mixed $action) : Route
+   public function match (string $path, mixed $action, array $methods) : Route
    {
-      return $this->add ([ 'PATCH' ], $pattern, $action);
+      return $this->add ($methods, $path, $action);
    }
 
-   public function post (string $pattern, mixed $action) : Route
+   public function options (string $path, mixed $action) : Route
    {
-      return $this->add ([ 'POST' ], $pattern, $action);
+      return $this->add ([ 'OPTIONS' ], $path, $action);
    }
 
-   public function put (string $pattern, mixed $action) : Route
+   public function patch (string $path, mixed $action) : Route
    {
-      return $this->add ([ 'PUT' ], $pattern, $action);
+      return $this->add ([ 'PATCH' ], $path, $action);
    }
 
-   public function trace (string $pattern, mixed $action) : Route
+   public function post (string $path, mixed $action) : Route
    {
-      return $this->add ([ 'TRACE' ], $pattern, $action);
+      return $this->add ([ 'POST' ], $path, $action);
    }
 
-   public function any (string $pattern, mixed $action) : Route
+   public function put (string $path, mixed $action) : Route
    {
-      return $this->add ([
-         'CONNECT',
-         'DELETE',
-         'GET',
-         'HEAD',
-         'OPTIONS',
-         'PATCH',
-         'POST',
-         'PUT',
-         'TRACE'
-      ], $pattern, $action);
+      return $this->add ([ 'PUT' ], $path, $action);
    }
 
-   public function match (string $pattern, mixed $action, array $methods) : Route
+   public function trace (string $path, mixed $action) : Route
    {
-      return $this->add ($methods, $pattern, $action);
+      return $this->add ([ 'TRACE' ], $path, $action);
    }
-
-   abstract public function add (array $methods, string $pattern, mixed $action) : Route;
 }

@@ -4,54 +4,52 @@ namespace Wisp\Environment;
 
 class Runtime
 {
-   private $startTime;
-   private $debug;
-   private $version;
-   private $stage;
+   private float  $startTime;
+   private string $root;
+   private bool   $debug;
+   private Stage  $stage;
+   private string $version;
    
-   public function __construct (array $settings)
+   public function __construct (
+      string $root,
+      bool $debug = false,
+      Stage $stage = Stage::production,
+      string $version = '1.0.0'
+   ) 
    {
       $this->startTime = microtime (true);
-
-      $this->debug   = $settings ['debug'];
-      $this->version = $settings ['version'];
-      $this->stage   = $settings ['stage'];
-
-      if ($this->debug) {
-         error_reporting (E_ALL);
-         ini_set ('display_errors', 1);
-      } else {
-         error_reporting (~E_ALL);
-         ini_set ('display_errors', 0);
-      }
+      $this->root = $root;
+      $this->debug = $debug;
+      $this->stage = $stage;
+      $this->version = $version;
    }
-
-   public function elapsed () : float
+   
+   public function getElapsedTime (): float
    {
       return microtime (true) - $this->startTime;
    }
-
-   public function getStage () : Stage
+   
+   public function getStage (): Stage
    {
       return $this->stage;
    }
-
-   public function getVersion () : string
+   
+   public function getVersion (): string
    {
       return $this->version;
    }
-
-   public function is (Stage $stage) : bool
+   
+   public function is (Stage $stage): bool
    {
       return $this->stage === $stage;
    }
-
-   public function isCli () : bool
+   
+   public function isCli (): bool
    {
-      return php_sapi_name () === 'cli';
+      return PHP_SAPI === 'cli';
    }
-
-   public function isDebug () : bool
+   
+   public function isDebug (): bool
    {
       return $this->debug;
    }

@@ -2,47 +2,52 @@
 
 namespace Wisp;
 
-class RouteGroup extends Constraint
+use Closure;
+
+class RouteGroup
 {
-   use Routable;
    use Pipeline;
+   use Routable;
 
-   private Router $router;
-   private array $routes;
-   private array $groups;
+   private ?RouteGroup $parent;
+   private ?string     $path;
+   private array       $groups;
+   private array       $routes;
 
-   public function __construct (Router $router, ?self $parent, ?string $path = null)
-   {
-      parent::__construct ($parent);
-      
-      $this->router = $router;
-      
-      if ($path) {
-         $this->path ($path);
-      }
-
-      $this->routes = [];
+   public function __construct (
+      private Router $router,
+      ?RouteGroup    $parent = null,
+      ?string        $path = null
+   ) {
+      $this->parent = $parent;
+      $this->path   = $path;
       $this->groups = [];
+      $this->routes = [];
    }
 
-   public function add (array $methods, string $path, mixed $action) : Route
+   public function add (array $methods, string $path, array | Closure $action) : Route
    {
       $route = new Route (
-         $this, 
-         $methods, 
-         $path, 
+         $this,
+         $methods,
+         $path,
          $action
       );
 
       $this->routes [] = $route;
       $this->router->register ($route);
-      
+
       return $route;
    }
 
-   public function getGroups () : array
+   public function getParent () : ?RouteGroup
    {
-      return $this->groups;
+      return $this->parent;
+   }
+
+   public function getPath () : ?string
+   {
+      return $this->path;
    }
 
    public function getRouter () : Router
@@ -50,36 +55,27 @@ class RouteGroup extends Constraint
       return $this->router;
    }
 
-   public function getRoutes () : array
-   {
-      return $this->routes;
-   }
-
    public function group (string $path, callable $callback) : self
    {
       $group = new self (
-         $this->router, 
-         $this, 
+         $this->router,
+         $this,
          $path
       );
 
-      $this->groups [] = $group;
+      // $this->groups [] = $group;
 
       $callback ($group);
+
       return $this;
    }
 
-   public function redirect (string $from, string $to, int $httpStatusCode) : self
-   {
-      return $this;
-   }
+   // public function __call (string $method, array $args) : Route | RouteGroup | Router
+   // {
+   //    if ($this->parent) {
+   //       return $this->parent->$method (... $args);
+   //    }
 
-   public function __call (string $method, array $args) : mixed
-   {
-      if ($this->parent) {
-         return $this->parent->$method (... $args);
-      } else {
-         return $this->router->$method (... $args);
-      }
-   }
+   //    return $this->router->$method (... $args);
+   // }
 }

@@ -1,0 +1,22 @@
+{
+  "autoload": {
+    "psr-4": {
+      "Wisp\\Example\\": "src/"
+    }
+  },
+  "require": {
+    "anders/wisp": "dev-master"
+  },
+  "repositories": [
+    {
+      "type": "path",
+      "url": "../",
+      "options": {
+        "symlink": true
+      }
+    }
+  ],
+  "scripts": {
+    "dev": "symfony local:server:start --port=9999"
+  }
+}

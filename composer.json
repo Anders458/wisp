@@ -1,19 +1,31 @@
 {
-    "name": "anders/wisp",
-    "description": "Light as air, fast as wind - an ethereally simple PHP router",
-    "type": "library",
-    "keywords": [ "microframework", "router" ],
-    "license": "MIT",
-    "autoload": {
-        "psr-4": {
-            "Wisp\\": "src/"
-        },
-        "files": [
-            "src/Util/Functions.php"
-        ]
+  "name": "anders/wisp",
+  "description": "Light as air, fast as wind - an ethereally simple PHP router",
+  "type": "library",
+  "keywords": [ "microframework", "router" ],
+  "license": "MIT",
+  "autoload": {
+    "psr-4": {
+      "Wisp\\": "src/"
     },
-    "require": {
-        "php": "^8.2",
-        "psr/log": "^3.0"
-    }
+    "files": [
+      "src/Util/Functions.php"
+    ]
+  },
+  "require": {
+    "php": "^8.4",
+    "psr/log": "^3.0",
+    "monolog/monolog": "^3.0",
+    "symfony/config": "^7.0",
+    "symfony/dependency-injection": "^7.0",
+    "symfony/error-handler": "^7.3",
+    "symfony/event-dispatcher": "^7.0",
+    "symfony/http-foundation": "^7.0",
+    "symfony/http-kernel": "^7.3",
+    "symfony/routing": "^7.0",
+    "symfony/yaml": "^7.3"
+  },
+  "require-dev": {
+    "symfony/var-dumper": "^7.3"
+  }
 }
