@@ -25,13 +25,16 @@ trait Pipeline
 
    public function middleware (string $class, array $settings = []) : self
    {
-      $container = Wisp::container ();
-
-      $container
+      $service = Container::instance ()
          ->register ($class)
          ->setAutowired (true)
-         ->setPublic (true)
-         ->setArgument ('$settings', $settings);
+         ->setPublic (true);
+
+      if (!empty ($settings)) {
+         foreach ($settings as $key => $value) {
+            $service->setArgument ("$$key", $value);
+         }
+      }
 
       if (method_exists ($class, Hook::Before->value)) {
          $this->pipe (Hook::Before, defer ([ $class, Hook::Before->value ]), Priority::Middleware);

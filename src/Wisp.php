@@ -18,15 +18,13 @@ use Symfony\Component\Routing\RequestContext;
 use Wisp\ArgumentResolver\ServiceValueResolver;
 use Wisp\Environment\Runtime;
 use Wisp\Environment\Stage;
-use Wisp\Listener\MiddlewareListener;
 use Wisp\Http\Request;
 use Wisp\Http\Response;
+use Wisp\Listener\MiddlewareListener;
 use Wisp\Service\Flash;
 
 class Wisp
 {
-   public static ContainerBuilder $container;
-   
    public readonly EventDispatcher  $dispatcher;
    public readonly HttpKernel       $kernel;
    public readonly Router           $router;
@@ -44,9 +42,7 @@ class Wisp
          Debug::enable ();
       }
 
-      self::$container = new ContainerBuilder ();
-
-      self::$container
+      Container::instance ()
          ->register (Runtime::class)
          ->setAutowired (true)
          ->setPublic (true)
@@ -55,48 +51,54 @@ class Wisp
          ->setArgument ('$debug', $debug)
          ->setArgument ('$version', $version);
 
-      self::$container
+      Container::instance ()
          ->register (EventDispatcher::class)
          ->setPublic (true)
          ->setAutowired (true);
 
-      self::$container
+      Container::instance ()
          ->register (Request::class)
          ->setSynthetic (true)
          ->setPublic (true);
 
-      self::$container
+      Container::instance ()
          ->register (Response::class)
          ->setSynthetic (true)
          ->setPublic (true);
 
-      self::$container
+      Container::instance ()
          ->register (Flash::class)
          ->setPublic (true)
          ->setAutowired (true);
 
-      self::$container->set (Wisp::class, $this);
-      self::$container->set (LoggerInterface::class, new Logger ($logs, $debug));
+      Container::instance ()
+         ->register (LoggerInterface::class)
+         ->setFactory ([ Logger::class, 'create' ])
+         ->setPublic (true)
+         ->setArgument ('$path', $logs)
+         ->setArgument ('$debug', $debug);
+
+      Container::instance ()->set (Wisp::class, $this);
 
       $this->router = new Router ();
    }
 
    public static function container () : ContainerBuilder
    {
-      return self::$container;
+      return Container::instance ();
    }
 
    public function run () : void
    {
-      self::$container->compile ();
+      Container::instance ()->compile ();
 
       $request = Request::createFromGlobals ();
       $response = new Response ();
 
-      self::$container->set (Request::class, $request);
-      self::$container->set (Response::class, $response);
+      Container::instance ()->set (Request::class, $request);
+      Container::instance ()->set (Response::class, $response);
 
-      $dispatcher = self::$container->get (EventDispatcher::class);
+      $dispatcher = Container::instance ()->get (EventDispatcher::class);
       
       $context = (new RequestContext ())
          ->fromRequest ($request);
@@ -112,19 +114,19 @@ class Wisp
          )
       );
 
-      $controllerResolver = new ContainerControllerResolver (self::$container);
+      $controllerResolver = new ContainerControllerResolver (Container::instance ());
 
       // $argumentResolver = new ArgumentResolver (
       //    new ArgumentMetadataFactory (),
       //    [
-      //       new ServiceValueResolver (self::$container)
+      //       new ServiceValueResolver (Container::instance ())
       //    ]
       // );
 
       $argumentResolver = new ArgumentResolver(
          new ArgumentMetadataFactory (),
          array_merge (
-            [ new ServiceValueResolver (self::$container) ],
+            [ new ServiceValueResolver (Container::instance ()) ],
             ArgumentResolver::getDefaultArgumentValueResolvers (),
          )
       );
@@ -143,7 +145,7 @@ class Wisp
          $argumentResolver
       );
 
-      self::$container->set (HttpKernelInterface::class, $kernel);
+      Container::instance ()->set (HttpKernelInterface::class, $kernel);
 
       $response = $kernel->handle ($request);
       $response->send ();

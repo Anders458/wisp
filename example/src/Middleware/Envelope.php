@@ -2,26 +2,27 @@
 
 namespace Wisp\Example\Middleware;
 
+use Psr\Log\LoggerInterface;
 use Wisp\Environment\Runtime;
 use Wisp\Http\Request;
 use Wisp\Http\Response;
 use Wisp\Service\Flash;
 
 class Envelope
-{  
+{
    public function __construct (
       private Request $request,
       private Response $response,
       private Runtime $runtime,
       private Flash $flash,
-      private array $settings
+      private LoggerInterface $logger
    )
    {
    }
 
    public function before ()
    {
-      error_log ('Envelope::before');
+      $this->logger->debug ('Middleware: Envelope before');
       $this->response->headers->set ('Content-Type', 'application/json');
    }
 

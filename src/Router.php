@@ -21,8 +21,6 @@ class Router
 
    public function register (Route $route) : self
    {
-      $container = Wisp::container ();
-
       $fullPath = $this->buildFullPath ($route);
 
       $action = $route->getAction ();
@@ -30,7 +28,7 @@ class Router
       // If action is [ClassName::class, 'method'], register the controller in container
       
       if (is_array ($action)) {
-         $container
+         Container::instance ()
             ->register ($action [0])
             ->setAutowired (true)
             ->setAutoconfigured (true)
@@ -74,7 +72,7 @@ class Router
       $current = $route->getParent ();
 
       while ($current) {
-         if ($current->getPath ()) {
+         if ($current->getPa  th ()) {
             array_unshift ($parts, $current->getPath ());
          }
 

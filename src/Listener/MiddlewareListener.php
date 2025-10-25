@@ -98,8 +98,6 @@ class MiddlewareListener implements EventSubscriberInterface
       foreach ($handlers as $handler) {
          $callable = ($handler->action) ($response);
 
-         var_dump ($callable);
-
          if (!$callable) {
             continue;
          }

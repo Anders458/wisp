@@ -2,7 +2,7 @@
 
 namespace Wisp\Example\Controller;
 
-use Symfony\Component\EventDispatcher\EventDispatcher;
+use Psr\Log\LoggerInterface;
 use Wisp\Http\Request;
 use Wisp\Http\Response;
 
@@ -11,28 +11,21 @@ class Error
    public function __construct (
       protected Request $request,
       protected Response $response,
-      protected EventDispatcher $dispatcher
+      protected LoggerInterface $logger
    )
    {
    }
 
-   public function before ()
-   {
-      // This runs automatically before every controller action
-      error_log ('BEFORE HOOK: Request URI: ' . $this->request->getRequestUri ());
-   }
-
-   public function after ()
-   {
-      // This runs automatically after every controller action
-      error_log ('AFTER HOOK: Response status: ' . $this->response->getStatusCode ());
-   }
-
    public function internalError ()
    {
+      $this->logger->error ('Internal server error occurred', [
+         'uri' => $this->request->getRequestUri (),
+         'method' => $this->request->getMethod ()
+      ]);
+
       return $this->response
          ->status (500)
-         ->json ([
+         ->body ([
             'error' => 'Internal Server Error',
             'message' => 'An unexpected error occurred'
          ]);
@@ -40,10 +33,14 @@ class Error
 
    public function notFound ()
    {
-      die ('t1'); 
+      $this->logger->warning ('Resource not found', [
+         'uri' => $this->request->getRequestUri (),
+         'method' => $this->request->getMethod ()
+      ]);
+
       return $this->response
          ->status (404)
-         ->json ([
+         ->body ([
             'error' => 'Not Found',
             'message' => 'The requested resource was not found'
          ]);
