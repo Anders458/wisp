@@ -2,8 +2,10 @@
 
 namespace Wisp\Http;
 
+use ReflectionClass;
 use Symfony\Component\HttpFoundation\Request as SymfonyRequest;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Wisp\Wisp;
 
 class Request extends SymfonyRequest
@@ -15,13 +17,66 @@ class Request extends SymfonyRequest
       $attributes ['_controller'] = $controller;
 
       $subRequest = $this->duplicate (
-         null, 
-         null, 
+         null,
+         null,
          $attributes
       );
 
       $response = $kernel->handle ($subRequest, HttpKernelInterface::SUB_REQUEST);
 
       return $response;
+   }
+
+   public function validate (string $dtoClass) : object
+   {
+      // Get request data based on content type
+      $data = $this->getRequestData ();
+
+      // Get validator from container
+      $validator = Wisp::container ()->get (ValidatorInterface::class);
+
+      // Create and hydrate DTO instance
+      $dto = $this->hydrateDto ($dtoClass, $data);
+
+      // Validate the DTO
+      $violations = $validator->validate ($dto);
+
+      if (count ($violations) > 0) {
+         throw new ValidationException ($violations);
+      }
+
+      return $dto;
+   }
+
+   private function getRequestData () : array
+   {
+      // Check if request is JSON
+      if ($this->headers->get ('Content-Type') === 'application/json' ||
+          str_contains ($this->headers->get ('Content-Type', ''), 'application/json')) {
+         $data = json_decode ($this->getContent (), true);
+         return $data ?? [];
+      }
+
+      // Otherwise, merge query and request parameters
+      return array_merge ($this->query->all (), $this->request->all ());
+   }
+
+   private function hydrateDto (string $dtoClass, array $data) : object
+   {
+      $reflection = new ReflectionClass ($dtoClass);
+      $dto = $reflection->newInstance ();
+
+      // Set public properties from data
+      foreach ($reflection->getProperties () as $property) {
+         if ($property->isPublic ()) {
+            $propertyName = $property->getName ();
+
+            if (array_key_exists ($propertyName, $data)) {
+               $property->setValue ($dto, $data [$propertyName]);
+            }
+         }
+      }
+
+      return $dto;
    }
 }

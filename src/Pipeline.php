@@ -52,7 +52,6 @@ trait Pipeline
       if (is_array ($action)) {
          container ()
             ->register ($action [0])
-            ->setAutowired (true)
             ->setPublic (true);
       }
       

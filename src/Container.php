@@ -12,6 +12,10 @@ class Container
    {
       if (!isset (self::$container)) {
          self::$container = new ContainerBuilder ();
+         
+         self::$container
+            ->setAlias (ContainerBuilder::class, 'service_container')
+            ->setPublic (true);
       }
 
       return self::$container;

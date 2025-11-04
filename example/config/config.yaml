@@ -1,0 +1,21 @@
+# Base application configuration
+app:
+  name: Wisp API Example
+  timezone: UTC
+  locale: en_US
+
+database:
+  host: localhost
+  port: 3306
+  name: wisp_app
+  charset: utf8mb4
+
+cache:
+  driver: file
+  ttl: 3600
+
+logging:
+  level: info
+  channels:
+    - file
+    - stdout

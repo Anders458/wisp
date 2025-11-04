@@ -2,8 +2,13 @@
 
 namespace Wisp;
 
+use Psr\Cache\CacheItemPoolInterface;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\HttpFoundation\Session\Session;
+use Symfony\Component\HttpFoundation\Session\SessionInterface;
+use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
 use Symfony\Component\ErrorHandler\Debug;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -15,6 +20,7 @@ use Symfony\Component\HttpKernel\HttpKernel;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
 use Symfony\Component\Routing\Matcher\UrlMatcher;
 use Symfony\Component\Routing\RequestContext;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Wisp\ArgumentResolver\ServiceValueResolver;
 use Wisp\Environment\Runtime;
 use Wisp\Environment\Stage;
@@ -22,6 +28,7 @@ use Wisp\Http\Request;
 use Wisp\Http\Response;
 use Wisp\Listener\MiddlewareListener;
 use Wisp\Service\Flash;
+use Wisp\Service\Keychain;
 
 class Wisp
 {
@@ -33,6 +40,7 @@ class Wisp
    {
       $name    = $settings ['name']    ?? 'Wisp';
       $root    = $settings ['root']    ?? getcwd ();
+      $config  = $settings ['config']  ?? $root . '/config';
       $logs    = $settings ['logs']    ?? $root . '/logs';
       $stage   = $settings ['stage']   ?? Stage::production;
       $debug   = $settings ['debug']   ?? Stage::production !== $stage;
@@ -42,43 +50,71 @@ class Wisp
          Debug::enable ();
       }
 
-      Container::instance ()
+      $container = Container::instance ();
+
+      $container
          ->register (Runtime::class)
-         ->setAutowired (true)
          ->setPublic (true)
          ->setArgument ('$root', $root)
          ->setArgument ('$stage', $stage)
          ->setArgument ('$debug', $debug)
          ->setArgument ('$version', $version);
 
-      Container::instance ()
+      $container
          ->register (EventDispatcher::class)
-         ->setPublic (true)
-         ->setAutowired (true);
+         ->setPublic (true);
 
-      Container::instance ()
+      $container
          ->register (Request::class)
          ->setSynthetic (true)
          ->setPublic (true);
 
-      Container::instance ()
+      $container
          ->register (Response::class)
          ->setSynthetic (true)
          ->setPublic (true);
 
-      Container::instance ()
+      $container
          ->register (Flash::class)
-         ->setPublic (true)
-         ->setAutowired (true);
+         ->setPublic (true);
 
-      Container::instance ()
+      $container
+         ->register (Keychain::class)
+         ->setPublic (true)
+         ->setAutowired (true)
+         ->setArgument ('$path', $config);
+
+      $container
+         ->register (CacheItemPoolInterface::class)
+         ->setClass (FilesystemAdapter::class)
+         ->setArguments ([
+            '$namespace' => $name,
+            '$defaultLifetime' => 0,
+            '$directory' => null
+         ])
+         ->setPublic (true);
+
+      $container
+         ->register (SessionInterface::class)
+         ->setClass (Session::class)
+         ->setArguments ([
+            '$storage' => new MockArraySessionStorage ()
+         ])
+         ->setPublic (true);
+
+      $container
+         ->register (ValidatorInterface::class)
+         ->setFactory ([ ValidatorFactory::class, 'create' ])
+         ->setPublic (true);
+
+      $container
          ->register (LoggerInterface::class)
          ->setFactory ([ Logger::class, 'create' ])
          ->setPublic (true)
          ->setArgument ('$path', $logs)
          ->setArgument ('$debug', $debug);
 
-      Container::instance ()->set (Wisp::class, $this);
+      $container->set (Wisp::class, $this);
 
       $this->router = new Router ();
    }
@@ -90,15 +126,17 @@ class Wisp
 
    public function run () : void
    {
-      Container::instance ()->compile ();
+      $container = Container::instance ();
+
+      $container->compile ();
 
       $request = Request::createFromGlobals ();
       $response = new Response ();
 
-      Container::instance ()->set (Request::class, $request);
-      Container::instance ()->set (Response::class, $response);
+      $container->set (Request::class, $request);
+      $container->set (Response::class, $response);
 
-      $dispatcher = Container::instance ()->get (EventDispatcher::class);
+      $dispatcher = $container->get (EventDispatcher::class);
       
       $context = (new RequestContext ())
          ->fromRequest ($request);
@@ -114,14 +152,7 @@ class Wisp
          )
       );
 
-      $controllerResolver = new ContainerControllerResolver (Container::instance ());
-
-      // $argumentResolver = new ArgumentResolver (
-      //    new ArgumentMetadataFactory (),
-      //    [
-      //       new ServiceValueResolver (Container::instance ())
-      //    ]
-      // );
+      $controllerResolver = new ContainerControllerResolver ($container);
 
       $argumentResolver = new ArgumentResolver(
          new ArgumentMetadataFactory (),
@@ -145,7 +176,7 @@ class Wisp
          $argumentResolver
       );
 
-      Container::instance ()->set (HttpKernelInterface::class, $kernel);
+      $container->set (HttpKernelInterface::class, $kernel);
 
       $response = $kernel->handle ($request);
       $response->send ();

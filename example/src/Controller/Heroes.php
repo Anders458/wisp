@@ -3,8 +3,10 @@
 namespace Wisp\Example\Controller;
 
 use Psr\Log\LoggerInterface;
+use Wisp\Example\Request\HeroRequest;
 use Wisp\Http\Request;
 use Wisp\Http\Response;
+use Wisp\Http\ValidationException;
 
 class Heroes
 {
@@ -28,7 +30,7 @@ class Heroes
    {
       return $this->response
          ->status (200)
-         ->body ([
+         ->json ([
             'heroes' => [
                ['id' => 'Hamg', 'name' => 'Mountain King', 'faction' => 'Human', 'type' => 'Strength'],
                ['id' => 'Hpal', 'name' => 'Paladin', 'faction' => 'Human', 'type' => 'Strength'],
@@ -63,12 +65,12 @@ class Heroes
       if (!isset ($heroes [$id])) {
          return $this->response
             ->status (404)
-            ->body (['error' => 'Hero not found']);
+            ->json ([ 'error' => 'Hero not found' ]);
       }
 
       return $this->response
          ->status (200)
-         ->body ($heroes [$id]);
+         ->json ($heroes [$id]);
    }
 
    public function stats (string $id)
@@ -83,14 +85,43 @@ class Heroes
       if (!isset ($stats [$id])) {
          return $this->response
             ->status (404)
-            ->body (['error' => 'Hero stats not found']);
+            ->json ([ 'error' => 'Hero stats not found' ]);
       }
 
       return $this->response
          ->status (200)
-         ->body ([
+         ->json ([
             'hero_id' => $id,
             'statistics' => $stats [$id]
+         ]);
+   }
+
+   public function store ()
+   {
+      try {
+         $data = $this->request->validate (HeroRequest::class);
+      } catch (ValidationException $e) {
+         return $e->getResponse ();
+      }
+
+      // At this point, $data is a validated HeroRequest instance
+      // In a real app, you would save this to a database
+      $this->logger->info ('Creating new hero', [
+         'name' => $data->name,
+         'power' => $data->power,
+         'alignment' => $data->alignment
+      ]);
+
+      return $this->response
+         ->status (201)
+         ->json ([
+            'message' => 'Hero created successfully',
+            'hero' => [
+               'name' => $data->name,
+               'power' => $data->power,
+               'bio' => $data->bio,
+               'alignment' => $data->alignment
+            ]
          ]);
    }
 }

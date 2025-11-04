@@ -4,6 +4,9 @@
       "Wisp\\Example\\": "src/"
     }
   },
+  "config": {
+    "process-timeout": 0
+  },
   "require": {
     "anders/wisp": "dev-master"
   },
@@ -17,6 +20,6 @@
     }
   ],
   "scripts": {
-    "dev": "symfony local:server:start --port=9999"
+    "dev": "symfony local:server:start --port=10000"
   }
 }

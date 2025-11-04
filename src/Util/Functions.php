@@ -1,11 +1,35 @@
 <?php
 
+use Psr\Cache\CacheItemPoolInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
-use Wisp\Wisp;
+use Symfony\Component\HttpFoundation\Session\SessionInterface;
+use Wisp\Container;
 
-function container () : ContainerBuilder
+function container (?string $service = null) : mixed
 {
-   return Wisp::container ();
+   $container = Container::instance ();
+
+   if ($service) {
+      return $container->get ($service);
+   }
+
+   return $container;
+}
+
+function logger () : LoggerInterface
+{
+   return container ()->get (LoggerInterface::class);
+}
+
+function cache () : CacheItemPoolInterface
+{
+   return container ()->get (CacheItemPoolInterface::class);
+}
+
+function session () : SessionInterface
+{
+   return container ()->get (SessionInterface::class);
 }
 
 /**

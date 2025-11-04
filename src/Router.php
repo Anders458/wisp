@@ -31,7 +31,6 @@ class Router
          Container::instance ()
             ->register ($action [0])
             ->setAutowired (true)
-            ->setAutoconfigured (true)
             ->setPublic (true);
       }
 
@@ -72,7 +71,7 @@ class Router
       $current = $route->getParent ();
 
       while ($current) {
-         if ($current->getPa  th ()) {
+         if ($current->getPath ()) {
             array_unshift ($parts, $current->getPath ());
          }
 

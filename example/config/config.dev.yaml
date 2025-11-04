@@ -1,0 +1,15 @@
+# Development environment overrides
+database:
+  host: localhost
+  name: wisp_dev
+
+cache:
+  driver: null
+  ttl: 0
+
+logging:
+  level: debug
+  channels:
+    - file
+    - stdout
+    - browser
