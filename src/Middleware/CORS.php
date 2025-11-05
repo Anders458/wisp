@@ -37,7 +37,6 @@ class CORS
             $this->response->headers->set ('Access-Control-Expose-Headers', implode (', ', $this->config ['expose_headers']));
          }
 
-         // Handle preflight requests
          if ($request->getMethod () === 'OPTIONS') {
             $this->response->headers->set ('Access-Control-Allow-Methods', implode (', ', $this->config ['methods']));
             $this->response->headers->set ('Access-Control-Allow-Headers', implode (', ', $this->config ['headers']));
@@ -54,12 +53,10 @@ class CORS
          return false;
       }
 
-      // Check if wildcard is allowed
       if (in_array ('*', $this->config ['origins'])) {
          return true;
       }
 
-      // Check if specific origin is in allowed list
       return in_array ($origin, $this->config ['origins']);
    }
 }

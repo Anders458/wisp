@@ -13,47 +13,36 @@ class Throttle
       private CacheItemPoolInterface $cache,
       private Request $request,
       private Response $response,
-      private int $maxAttempts = 60,
-      private int $decaySeconds = 60,
-      private ?Closure $keyResolver = null
+
+      private int $limit  = 60,
+      private int $window = 60
    )
    {
    }
 
    public function before ()
    {
-      $key = $this->getKey ();
-      $cacheKey = 'rate_limit_' . md5 ($key);
+      $cacheKey = 'wisp:rate_limit_' . md5 ($this->request->getClientIp ());
 
       $item = $this->cache->getItem ($cacheKey);
 
       if ($item->isHit ()) {
-         $attempts = $item->get ();
+         $requests = $item->get ();
 
-         if ($attempts >= $this->maxAttempts) {
-            $this->response->headers->set ('X-RateLimit-Limit', (string) $this->maxAttempts);
+         if ($requests >= $this->limit) {
+            $this->response->headers->set ('X-RateLimit-Limit', (string) $this->limit);
             $this->response->headers->set ('X-RateLimit-Remaining', '0');
 
             return $this->response
-               ->status (429)
-               ->json ([ 'error' => 'Too many requests' ]);
+               ->status (429);
          }
 
-         $item->set ($attempts + 1);
+         $item->set ($requests + 1);
       } else {
          $item->set (1);
-         $item->expiresAfter ($this->decaySeconds);
+         $item->expiresAfter ($this->window);
       }
 
       $this->cache->save ($item);
-   }
-
-   private function getKey () : string
-   {
-      if ($this->keyResolver !== null) {
-         return ($this->keyResolver) ($this->request);
-      }
-
-      return $this->request->getClientIp () ?? 'unknown';
    }
 }

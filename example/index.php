@@ -12,6 +12,7 @@ use Wisp\Example\Middleware\Auth;
 use Wisp\Example\Middleware\RateLimit;
 use Wisp\Example\Middleware\Timer;
 use Wisp\Http\Request;
+use Wisp\Middleware\Authentication;
 use Wisp\Middleware\Cache;
 use Wisp\Middleware\Compression;
 use Wisp\Middleware\CSRF;
@@ -36,11 +37,9 @@ $app
    ->on (404, [ Error::class, 'notFound' ])
    ->on (500, [ Error::class, 'internalError' ])
 
-   // Global middleware
    ->middleware (Session::class)
-   ->middleware (CSRF::class, [ 'exclude' => [ '/api/*', '/examples/*' ] ])
+   ->middleware (CSRF::class)
    ->middleware (Helmet::class)
-   ->middleware (Compression::class)
    ->middleware (Envelope::class)
 
    ->before (function () {
@@ -59,7 +58,6 @@ $app
       $logger->debug ('Global after');
    })
 
-   // Example routes demonstrating Response methods
    ->group ('/examples', fn ($group) =>
       $group
          ->get ('/redirect', [ Examples::class, 'redirect' ])
@@ -70,19 +68,15 @@ $app
 
    ->group ('/v1', fn ($group) =>
       $group
-         ->middleware (Throttle::class, [ 'maxAttempts' => 100, 'decaySeconds' => 60 ])
-         ->middleware (Cache::class, [ 'ttl' => 300, 'vary' => [ 'Accept' ] ])
-         ->middleware (Timer::class, [ 'label' => 'API v1 Group' ])
-         ->middleware (RateLimit::class, [ 'maxRequests' => 1000 ])
-         ->middleware (Auth::class)
+         ->middleware (Throttle::class, [ 
+            'limit' => 100, 
+            'window' => 60 
+         ])
+         ->middleware (Authentication::class)
 
          ->get ('/health-check', [ System::class, 'healthCheck' ])
-
          ->get ('/heroes', [ Heroes::class, 'index' ])
-            ->middleware (Timer::class, [ 'label' => 'Heroes Index' ])
-
          ->post ('/heroes', [ Heroes::class, 'store' ])
-
          ->get ('/heroes/{id}', [ Heroes::class, 'show' ])
          ->get ('/heroes/{id}/stats', [ Heroes::class, 'stats' ])
    );

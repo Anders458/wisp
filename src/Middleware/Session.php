@@ -12,17 +12,17 @@ class Session
    {
    }
 
-   public function after ()
-   {
-      if ($this->session->isStarted ()) {
-         $this->session->save ();
-      }
-   }
-
-   public function before ()
+   public function before () : void
    {
       if (!$this->session->isStarted ()) {
          $this->session->start ();
+      }
+   }
+
+   public function after () : void
+   {
+      if ($this->session->isStarted ()) {
+         $this->session->save ();
       }
    }
 }

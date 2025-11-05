@@ -63,3 +63,8 @@ function defer (array $callable) : Closure
       return Closure::fromCallable ([ $instance, $method ]);
    };
 }
+
+function sha256 (string $data) : string
+{
+   return hash ('sha256', $data);
+}

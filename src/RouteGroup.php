@@ -6,6 +6,7 @@ use Closure;
 
 class RouteGroup
 {
+   use Guardable;
    use Pipeline;
    use Routable;
 

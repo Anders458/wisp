@@ -6,10 +6,11 @@ use Psr\Cache\CacheItemPoolInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\Reference;
 use Symfony\Component\HttpFoundation\Session\Session;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
-use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
 use Symfony\Component\ErrorHandler\Debug;
+use Wisp\Session\CacheSessionStorage;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpKernel\Controller\ArgumentResolver;
@@ -27,6 +28,7 @@ use Wisp\Environment\Stage;
 use Wisp\Http\Request;
 use Wisp\Http\Response;
 use Wisp\Listener\MiddlewareListener;
+use Wisp\Middleware\ETag;
 use Wisp\Service\Flash;
 use Wisp\Service\Keychain;
 
@@ -95,10 +97,18 @@ class Wisp
          ->setPublic (true);
 
       $container
+         ->register (CacheSessionStorage::class)
+         ->setArguments ([
+            '$cache' => new Reference (CacheItemPoolInterface::class),
+            '$ttl' => 604800 // 7 days
+         ])
+         ->setPublic (true);
+
+      $container
          ->register (SessionInterface::class)
          ->setClass (Session::class)
          ->setArguments ([
-            '$storage' => new MockArraySessionStorage ()
+            '$storage' => new Reference (CacheSessionStorage::class)
          ])
          ->setPublic (true);
 
@@ -117,6 +127,8 @@ class Wisp
       $container->set (Wisp::class, $this);
 
       $this->router = new Router ();
+
+      $this->middleware (ETag::class);
    }
 
    public static function container () : ContainerBuilder

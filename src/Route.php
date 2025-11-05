@@ -7,6 +7,7 @@ use Wisp\Pipeline\Hook;
 
 class Route
 {
+   use Guardable;
    use Pipeline;
 
    private string $name;

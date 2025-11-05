@@ -6,6 +6,7 @@ class Flash
 {
    public array $errors = [];
    public array $warnings = [];
+   
    public int $code = 0;
 
    public function error (string $message, ?int $code = null) : self
