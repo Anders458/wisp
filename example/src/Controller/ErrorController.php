@@ -6,7 +6,7 @@ use Psr\Log\LoggerInterface;
 use Wisp\Http\Request;
 use Wisp\Http\Response;
 
-class Error
+class ErrorController
 {
    public function __construct (
       protected Request $request,

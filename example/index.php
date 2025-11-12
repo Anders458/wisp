@@ -7,10 +7,10 @@ use Example\Controller\UserController;
 use Example\Security\DatabaseUserProvider;
 use Psr\Log\LoggerInterface;
 use Wisp\Environment\Stage;
-use Wisp\Example\Controller\Error;
-use Wisp\Example\Controller\Examples;
-use Wisp\Example\Controller\Heroes;
-use Wisp\Example\Controller\System;
+use Wisp\Example\Controller\ErrorController;
+use Wisp\Example\Controller\ExamplesController;
+use Wisp\Example\Controller\HeroesController;
+use Wisp\Example\Controller\SystemController;
 use Wisp\Http\Request;
 use Wisp\Middleware\Authentication\TokenAuthentication;
 use Wisp\Middleware\CORS;
@@ -39,8 +39,8 @@ Wisp::container ()
    ->setPublic (true);
 
 $app
-   ->on (404, [ Error::class, 'notFound' ])
-   ->on (500, [ Error::class, 'internalError' ])
+   ->on (404, [ ErrorController::class, 'notFound' ])
+   ->on (500, [ ErrorController::class, 'internalError' ])
 
    ->middleware (Session::class)
    ->middleware (CORS::class)
@@ -66,10 +66,10 @@ $app
 
    ->group ('/examples', fn ($group) =>
       $group
-         ->get ('/redirect', [ Examples::class, 'redirect' ])
-         ->get ('/download', [ Examples::class, 'download' ])
-         ->get ('/html',     [ Examples::class, 'html' ])
-         ->get ('/text',     [ Examples::class, 'text' ])
+         ->get ('/redirect', [ ExamplesController::class, 'redirect' ])
+         ->get ('/download', [ ExamplesController::class, 'download' ])
+         ->get ('/html',     [ ExamplesController::class, 'html' ])
+         ->get ('/text',     [ ExamplesController::class, 'text' ])
    )
 
    ->group ('/v1', fn ($group) =>
@@ -79,10 +79,10 @@ $app
             'window' => 60 
          ])
 
-         ->get ('/health-check', [ System::class, 'healthCheck' ])
-         ->get ('/heroes',       [ Heroes::class, 'index' ])
-         ->post ('/heroes',      [ Heroes::class, 'store' ])
-         ->get ('/heroes/{id}',  [ Heroes::class, 'show' ])
+         ->get ('/health-check', [ SystemController::class, 'healthCheck' ])
+         ->get ('/heroes',       [ HeroesController::class, 'index' ])
+         ->post ('/heroes',      [ HeroesController::class, 'store' ])
+         ->get ('/heroes/{id}',  [ HeroesController::class, 'show' ])
 
          ->group ('/gateway', fn ($group) =>
             $group

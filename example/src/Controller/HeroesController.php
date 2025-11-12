@@ -8,7 +8,7 @@ use Wisp\Http\Request;
 use Wisp\Http\Response;
 use Wisp\Http\ValidationException;
 
-class Heroes
+class HeroesController
 {
    public function __construct (
       protected Request $request,

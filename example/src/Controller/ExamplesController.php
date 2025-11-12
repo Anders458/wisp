@@ -4,7 +4,7 @@ namespace Wisp\Example\Controller;
 
 use Wisp\Http\Response;
 
-class Examples
+class ExamplesController
 {
    public function __construct (
       private Response $response
