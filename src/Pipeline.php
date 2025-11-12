@@ -3,6 +3,7 @@
 namespace Wisp;
 
 use Closure;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Wisp\Http\Response;
 use Wisp\Pipeline\Handler;
 use Wisp\Pipeline\Hook;
@@ -52,11 +53,12 @@ trait Pipeline
       if (is_array ($action)) {
          container ()
             ->register ($action [0])
+            ->setAutowired (true)
             ->setPublic (true);
       }
-      
-      $conditioned = function (Response $response) use ($code, $action) {
-         if ($response->getStatusCode () === $code) {
+
+      $conditioned = function (?SymfonyResponse $response) use ($code, $action) {
+         if ($response && $response->getStatusCode () === $code) {
             return defer ($action);
          }
       };

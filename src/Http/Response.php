@@ -6,7 +6,7 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
-use Wisp\Service\Flash;
+use Wisp\Service\FlashInterface;
 
 class Response extends SymfonyResponse
 {
@@ -45,7 +45,13 @@ class Response extends SymfonyResponse
 
    public function error (string $message, ?int $code = null) : self
    {
-      container (Flash::class)->error ($message, $code);
+      container (FlashInterface::class)->error ($message, $code);
+
+      // Set JSON content type so Envelope middleware will wrap the response
+      if (!$this->headers->has ('Content-Type')) {
+         $this->headers->set ('Content-Type', 'application/json');
+      }
+
       return $this;
    }
 
@@ -110,7 +116,13 @@ class Response extends SymfonyResponse
 
    public function warning (string $message, ?int $code = null) : self
    {
-      container (Flash::class)->warning ($message, $code);
+      container (FlashInterface::class)->warning ($message, $code);
+
+      // Set JSON content type so Envelope middleware will wrap the response
+      if (!$this->headers->has ('Content-Type')) {
+         $this->headers->set ('Content-Type', 'application/json');
+      }
+
       return $this;
    }
 }

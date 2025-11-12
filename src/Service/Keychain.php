@@ -3,15 +3,15 @@
 namespace Wisp\Service;
 
 use Symfony\Component\Yaml\Yaml;
-use Wisp\Environment\Runtime;
+use Wisp\Environment\RuntimeInterface;
 
-class Keychain
+class Keychain implements KeychainInterface
 {
    private array $configs = [];
 
    public function __construct (
       private string $path,
-      private Runtime $runtime
+      private RuntimeInterface $runtime
    )
    {
       $this->load ();

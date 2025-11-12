@@ -2,7 +2,7 @@
 
 namespace Wisp\Service;
 
-class Flash
+class Flash implements FlashInterface
 {
    public array $errors = [];
    public array $warnings = [];

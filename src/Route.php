@@ -18,7 +18,10 @@ class Route
       private string $path,
       private array | Closure $action
    ) {
-      $this->name = $this->path;
+      // Generate unique name by combining methods and path
+      // E.g., "GET|/heroes" or "POST|/heroes" or "GET|POST|/heroes"
+      $methodString = implode ('|', $this->methods);
+      $this->name = $methodString . '|' . $this->path;
    }
 
    public function getAction () : mixed

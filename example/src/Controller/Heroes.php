@@ -73,29 +73,6 @@ class Heroes
          ->json ($heroes [$id]);
    }
 
-   public function stats (string $id)
-   {
-      $stats = [
-         'Hamg' => ['wins' => 1247, 'losses' => 986, 'winrate' => 55.8, 'avg_level' => 5.2, 'pick_rate' => 12.4],
-         'Obla' => ['wins' => 1891, 'losses' => 1523, 'winrate' => 55.4, 'avg_level' => 5.7, 'pick_rate' => 18.9],
-         'Edem' => ['wins' => 2134, 'losses' => 1687, 'winrate' => 55.9, 'avg_level' => 6.1, 'pick_rate' => 21.2],
-         'Udea' => ['wins' => 1654, 'losses' => 1432, 'winrate' => 53.6, 'avg_level' => 5.4, 'pick_rate' => 15.7]
-      ];
-
-      if (!isset ($stats [$id])) {
-         return $this->response
-            ->status (404)
-            ->json ([ 'error' => 'Hero stats not found' ]);
-      }
-
-      return $this->response
-         ->status (200)
-         ->json ([
-            'hero_id' => $id,
-            'statistics' => $stats [$id]
-         ]);
-   }
-
    public function store ()
    {
       try {

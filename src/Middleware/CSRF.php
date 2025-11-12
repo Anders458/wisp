@@ -2,38 +2,54 @@
 
 namespace Wisp\Middleware;
 
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
+use Symfony\Component\Security\Csrf\CsrfToken;
+use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 use Wisp\Http\Request;
 use Wisp\Http\Response;
 
 class CSRF
 {
    public function __construct (
-      private SessionInterface $session,
       private Request $request,
       private Response $response,
-
+      private SessionInterface $session,
+      private CsrfTokenManagerInterface $csrfTokenManager,
+      private string $tokenId = 'wisp_csrf',
       private string $header = 'X-CSRF-Token',
-      private string $field  = 'wisp:csrf.token'
+      private string $field = 'wisp:csrf.token'
    )
    {
    }
 
    public function before ()
    {
+      // Skip CSRF for API requests (with Authorization header)
       if ($this->request->headers->has ('Authorization')) {
          return;
       }
 
-      if (!in_array ($this->request->getMethod (), [ 'POST', 'PUT', 'DELETE', 'PATCH' ])) {
+      // Skip for read-only methods
+      if (!in_array ($this->request->getMethod (), ['POST', 'PUT', 'DELETE', 'PATCH'])) {
          return;
       }
 
-      $token = $this->request->headers->get ($this->header) ??
-               $this->request->request->get ($this->field) ??
-               '';
+      // Get token from header or form data
+      $token = $this->request->headers->get ($this->header)
+         ?? $this->request->request->get ($this->field)
+         ?? '';
 
-      if (!hash_equals ($this->getToken (), $token)) {
+      if (!$token) {
+         return $this->response
+            ->status (403)
+            ->error ('CSRF token missing');
+      }
+
+      // Validate token using Symfony CSRF
+      $csrfToken = new CsrfToken ($this->tokenId, $token);
+
+      if (!$this->csrfTokenManager->isTokenValid ($csrfToken)) {
          return $this->response
             ->status (403)
             ->error ('Invalid CSRF token');
@@ -42,10 +58,7 @@ class CSRF
 
    public function getToken () : string
    {
-      if (!$this->session->has ($this->field)) {
-         $this->session->set ($this->field, bin2hex (random_bytes (32)));
-      }
-
-      return $this->session->get ($this->field);
+      // Get or generate CSRF token using Symfony
+      return $this->csrfTokenManager->getToken ($this->tokenId)->getValue ();
    }
 }

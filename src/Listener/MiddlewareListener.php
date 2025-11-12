@@ -3,6 +3,7 @@
 namespace Wisp\Listener;
 
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Symfony\Component\HttpKernel\Controller\ArgumentResolverInterface;
 use Symfony\Component\HttpKernel\Event\ControllerArgumentsEvent;
 use Symfony\Component\HttpKernel\Event\ResponseEvent;
@@ -65,7 +66,8 @@ class MiddlewareListener implements EventSubscriberInterface
       $route = $this->getRoute ($request);
 
       // Update container with current response so it can be injected
-      \Wisp\Wisp::container ()->set (Response::class, $response);
+      // Response::class will resolve to this via alias
+      container ()->set (SymfonyResponse::class, $response);
 
       $controller = array_pop ($this->stack);
 
@@ -73,15 +75,15 @@ class MiddlewareListener implements EventSubscriberInterface
 
       if ($result instanceof Response) {
          $response = $result;
-         \Wisp\Wisp::container ()->set (Response::class, $response);
+         container ()->set (SymfonyResponse::class, $response);
          $event->setResponse ($response);
       }
 
       if ($route) {
          $result = $this->executePipeline ($route->getPipeline (Hook::After), $request, $response);
 
-         if ($result instanceof Response) {
-            \Wisp\Wisp::container ()->set (Response::class, $result);
+         if ($result instanceof SymfonyResponse) {
+            container ()->set (SymfonyResponse::class, $result);
             $event->setResponse ($result);
          }
       }
@@ -93,7 +95,7 @@ class MiddlewareListener implements EventSubscriberInterface
       return $name ? $this->router->find ($name) : null;
    }
 
-   private function executePipeline (array $handlers, Request $request, ?Response $response = null) : ?Response
+   private function executePipeline (array $handlers, Request $request, ?SymfonyResponse $response = null) : ?SymfonyResponse
    {
       foreach ($handlers as $handler) {
          $callable = ($handler->action) ($response);
@@ -105,9 +107,9 @@ class MiddlewareListener implements EventSubscriberInterface
          $arguments = $this->argumentResolver->getArguments ($request, $callable);
          $result = $callable (...$arguments);
 
-         if ($result instanceof Response) {
+         if ($result instanceof SymfonyResponse) {
             // Update container so next handler gets the updated response
-            \Wisp\Wisp::container ()->set (Response::class, $result);
+            \Wisp\Wisp::container ()->set (SymfonyResponse::class, $result);
             return $result;
          }
       }

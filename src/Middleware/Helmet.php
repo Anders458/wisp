@@ -2,12 +2,12 @@
 
 namespace Wisp\Middleware;
 
-use Wisp\Http\Response;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class Helmet
 {
    public function __construct (
-      private Response $response,
+      private SymfonyResponse $response,
 
       // Content Security Policy
       private string $csp = "default-src 'self'",

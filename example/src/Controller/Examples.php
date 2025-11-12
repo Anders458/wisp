@@ -14,15 +14,15 @@ class Examples
 
    public function download ()
    {
-      $logFile = __DIR__ . '/../../logs/app.log';
+      $logFile = __DIR__ . '/../../logs/wisp.log';
 
       if (file_exists ($logFile)) {
-         return $this->response->download ($logFile, 'wisp-app.log');
+         return $this->response->download ($logFile, 'wisp.log');
       }
 
       return $this->response
          ->status (404)
-         ->text ('Log file not found');
+         ->error ('Log file not found');
    }
 
    public function html ()

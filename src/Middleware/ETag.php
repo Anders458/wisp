@@ -2,14 +2,14 @@
 
 namespace Wisp\Middleware;
 
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Wisp\Http\Request;
-use Wisp\Http\Response;
 
 class ETag
 {
    public function __construct (
       private Request $request,
-      private Response $response,
+      private SymfonyResponse $response,
    )
    {
    }

@@ -2,7 +2,7 @@
 
 namespace Wisp\Environment;
 
-class Runtime
+class Runtime implements RuntimeInterface
 {
    private float  $startTime;
    private string $root;

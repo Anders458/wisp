@@ -4,7 +4,7 @@ namespace Wisp\Http;
 
 use Exception;
 use Symfony\Component\Validator\ConstraintViolationListInterface;
-use Wisp\Service\Flash;
+use Wisp\Service\FlashInterface;
 
 class ValidationException extends Exception
 {
@@ -18,7 +18,7 @@ class ValidationException extends Exception
    public function getResponse () : Response
    {
       $response = new Response ();
-      $flash = container (Flash::class);
+      $flash = container (FlashInterface::class);
 
       // Add each violation to flash errors
       foreach ($this->violations as $violation) {

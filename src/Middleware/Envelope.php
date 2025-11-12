@@ -2,26 +2,29 @@
 
 namespace Wisp\Middleware;
 
-use Wisp\Environment\Runtime;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
+use Wisp\Environment\RuntimeInterface;
 use Wisp\Http\Request;
 use Wisp\Http\Response;
-use Wisp\Service\Flash;
+use Wisp\Service\FlashInterface;
 
 class Envelope
 {
    public function __construct (
       private Request $request,
-      private Response $response,
-      private Runtime $runtime,
-      private Flash $flash,
+      private RuntimeInterface $runtime,
+      private FlashInterface $flash,
       private ?CSRF $csrf = null
    )
    {
    }
 
-   public function after (Response $response)
+   public function after (SymfonyResponse $response)
    {
-      // Only wrap JSON responses
+      if (!$response instanceof Response) {
+         return;
+      }
+
       $contentType = $response->headers->get ('Content-Type', '');
 
       if (!str_contains ($contentType, 'application/json')) {
@@ -31,15 +34,15 @@ class Envelope
       $envelope = [];
 
       $envelope ['version'] = $this->runtime->getVersion ();
-      $envelope ['status'] = $this->response->getStatus ();
-      $envelope ['code'] = $this->response->getStatusCode ();
+      $envelope ['status'] = $response->getStatus ();
+      $envelope ['code'] = $response->getStatusCode ();
       $envelope ['stage'] = $this->runtime->getStage ();
       $envelope ['debug'] = $this->runtime->isDebug ();
       $envelope ['query_time'] = round ($this->runtime->getElapsedTime (), 4);
       $envelope ['query_date'] = gmdate ('Y-m-d H:i:s');
 
-      // Include CSRF token if CSRF middleware is registered
-      if ($this->csrf !== null) {
+      // Include CSRF token if CSRF middleware is registered and session is available
+      if ($this->csrf !== null && $this->request->hasSession (skipIfUninitialized: true)) {
          $envelope ['csrf'] = $this->csrf->getToken ();
       }
 
@@ -58,7 +61,7 @@ class Envelope
          ];
       }
 
-      $body = $this->response->getContent ();
+      $body = $response->getContent ();
 
       if (!empty ($body)) {
          $decoded = json_decode ($body, true);
@@ -67,6 +70,6 @@ class Envelope
          $envelope ['body'] = null;
       }
 
-      $this->response->json ($envelope);
+      $response->json ($envelope);
    }
 }
