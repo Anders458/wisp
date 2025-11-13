@@ -6,17 +6,20 @@ use Symfony\Component\HttpFoundation\Session\SessionInterface;
 use Symfony\Component\PasswordHasher\PasswordHasherInterface;
 use Wisp\Http\Request;
 use Wisp\Http\Response;
+use Wisp\Middleware\Authentication\TokenAuthentication;
 use Wisp\Middleware\Session;
-use Wisp\Security\TokenManager;
+use Wisp\Security\AccessTokenProvider;
+use Wisp\Security\Contracts\UserProviderInterface;
 
 class TokenController
 {
    public function __construct (
-      private TokenManager $tokenManager,
+      private Response $response,
       private SessionInterface $session,
-      private Session $sessionMiddleware,
+      private AccessTokenProvider $accessTokenProvider,
       private PasswordHasherInterface $passwordHasher,
-      private Response $response
+      private UserProviderInterface $userProvider,
+      private TokenAuthentication $tokenAuthenticationMiddleware
    ) {}
 
    public function login (Request $request) : Response
@@ -24,107 +27,67 @@ class TokenController
       $email    = $request->input ('email');
       $password = $request->input ('password');
 
-      // TODO: Replace with real database lookup
-      // Example: $user = User::where ('email', $email)->first ();
-      $storedHash = '$2y$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5oPLQOZw4BQGG'; // "secret"
+      $user = $this->userProvider->loadUser ($email);
 
-      // SECURITY: Verify password using constant-time comparison
-      if ($email !== 'user@example.com' || !$this->passwordHasher->verify ($password, $storedHash)) {
+      if (!$user || !$this->passwordHasher->verify ($user->getPassword (), $password)) {
          return $this->response
             ->status (401)
-            ->json (['error' => 'Invalid credentials']);
+            ->error ('Invalid credentials');
       }
 
-      // SECURITY: Check if password needs rehashing (algorithm/cost changed)
-      if ($this->passwordHasher->needsRehash ($storedHash)) {
+      if ($this->passwordHasher->needsRehash ($user->getPassword ())) {
          $newHash = $this->passwordHasher->hash ($password);
-         // TODO: Update database with new hash
-         // Example: $user->update (['password' => $newHash]);
+         
+         // $userRepository->updatePassword (
+         //    $user->getId (), 
+         //    $newHash
+         // );
       }
 
-      // Generate tokens
-      $tokens = $this->tokenManager->become (
-         userId: 1,
-         role: 'user',
-         permissions: ['read:own', 'write:own']
+      $tokens = $this->accessTokenProvider->become (
+         userId: $user->getId (),
+         role: $user->getRole (),
+         permissions: $user->getPermissions ()
       );
 
       return $this->response->json ($tokens);
    }
 
-   /**
-    * Refresh access token
-    * POST /auth/token/refresh
-    * Body: {"refresh_token": "..."}
-    */
    public function refresh (Request $request) : Response
    {
       $refreshToken = $request->input ('refresh_token');
 
-      $tokens = $this->tokenManager->refresh ($refreshToken);
+      $tokens = $this->accessTokenProvider->refresh ($refreshToken);
 
       if (!$tokens) {
          return $this->response
             ->status (401)
-            ->json (['error' => 'Invalid refresh token']);
+            ->error ('Invalid refresh token');
       }
 
       return $this->response->json ($tokens);
    }
 
-   /**
-    * Logout (revoke tokens)
-    * POST /auth/token/logout
-    * Body: {"refresh_token": "..."}
-    */
-   public function logout (Request $request) : Response
+   public function logout () : Response
    {
-      $refreshToken = $request->input ('refresh_token');
+      $accessToken = $this->tokenAuthenticationMiddleware->getAuthorizationToken ();
 
-      $this->tokenManager->revoke ($refreshToken);
-
-      return $this->response->json (['message' => 'Logged out']);
-   }
-
-   /**
-    * Web-based login (session)
-    * POST /auth/web/login
-    * Body: {"email": "admin@example.com", "password": "secret"}
-    */
-   public function webLogin (Request $request) : Response
-   {
-      $email = $request->input ('email');
-      $password = $request->input ('password');
-
-      // TODO: Replace with real database lookup
-      $storedHash = '$2y$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5oPLQOZw4BQGG'; // "secret"
-
-      // SECURITY: Verify password using constant-time comparison
-      if ($email !== 'admin@example.com' || !$this->passwordHasher->verify ($password, $storedHash)) {
+      if (!$accessToken) {
          return $this->response
             ->status (401)
-            ->json (['error' => 'Invalid credentials']);
+            ->error ('Authorization header required');
       }
 
-      // SECURITY: Regenerate session ID to prevent session fixation
-      $this->sessionMiddleware->regenerate (true);
+      $revoked = $this->accessTokenProvider->revoke ($accessToken);
 
-      // Set user in session
-      $this->session->set ('user_id', 1);
-      $this->session->set ('role', 'admin');
-      $this->session->set ('permissions', ['*']);
+      if (!$revoked) {
+         return $this->response
+            ->status (401)
+            ->error ('Invalid or expired token');
+      }
 
-      return $this->response->json (['message' => 'Logged in']);
-   }
-
-   /**
-    * Web-based logout
-    * POST /auth/web/logout
-    */
-   public function webLogout () : Response
-   {
-      $this->session->invalidate ();
-
-      return $this->response->json (['message' => 'Logged out']);
+      return $this->response
+         ->status (200)
+         ->json (null);
    }
 }

@@ -9,7 +9,8 @@ class User implements SymfonyUserInterface
    public function __construct (
       private int | string $id,
       private string $role,
-      private array $permissions = []
+      private array $permissions = [],
+      private ?string $password = null
    )
    {
    }
@@ -22,6 +23,11 @@ class User implements SymfonyUserInterface
    public function getId () : int | string
    {
       return $this->id;
+   }
+
+   public function getPassword () : ?string
+   {
+      return $this->password;
    }
 
    public function getPermissions () : array

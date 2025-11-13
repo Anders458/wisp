@@ -68,7 +68,7 @@ $app->middleware (TokenAuthentication::class, [
 ```php
 class AuthController
 {
-   public function __construct (private TokenManager $tokenManager) {}
+   public function __construct (private AccessTokenProvider $accessTokenProvider) {}
 
    public function login (Request $request) : Response
    {
@@ -76,7 +76,7 @@ class AuthController
       $user = $this->validateCredentials ($request);
 
       // Generate tokens
-      $tokens = $this->tokenManager->become (
+      $tokens = $this->accessTokenProvider->become (
          userId: $user->id,
          role: $user->role,
          permissions: $user->permissions
@@ -88,7 +88,7 @@ class AuthController
    public function refresh (Request $request) : Response
    {
       $refreshToken = $request->input ('refresh_token');
-      $tokens = $this->tokenManager->refresh ($refreshToken);
+      $tokens = $this->accessTokenProvider->refresh ($refreshToken);
 
       return $this->response->json ($tokens);
    }

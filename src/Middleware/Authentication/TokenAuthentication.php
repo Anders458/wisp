@@ -6,8 +6,8 @@ use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInt
 use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken as AuthenticatedToken;
 use Wisp\Http\Request;
 use Wisp\Http\Response;
+use Wisp\Security\AccessTokenProvider;
 use Wisp\Security\Contracts\UserProviderInterface;
-use Wisp\Security\TokenManager;
 
 class TokenAuthentication
 {
@@ -15,7 +15,7 @@ class TokenAuthentication
       private Request $request,
       private Response $response,
       private CurrentUserStorageInterface $tokenStorage,
-      private TokenManager $tokenManager,
+      private AccessTokenProvider $accessTokenProvider,
       private UserProviderInterface $userProvider,
       
       private array $ttl = [
@@ -31,22 +31,13 @@ class TokenAuthentication
 
    public function before ()
    {
-      if (!$this->request->headers->has ($this->header)) {
-         return;
-      }
-
-      $headerValue = $this->request->headers->get ($this->header);
-
-      if (!str_starts_with ($headerValue, $this->scheme)) {
+      if (! ($accessToken = $this->getAuthorizationToken ())) {
          return $this->response
             ->status (401)
             ->error ("Token-based authentication requires a {$this->scheme} token in the {$this->header} header");
       }
 
-      $accessToken = substr ($headerValue, strlen ($this->scheme) + 1);
-
-      // Validate token and get session data
-      $sessionData = $this->tokenManager->validateAccessToken ($accessToken);
+      $sessionData = $this->accessTokenProvider->validate ($accessToken);
 
       if (!$sessionData) {
          return $this->response
@@ -54,7 +45,6 @@ class TokenAuthentication
             ->error ('Invalid or expired access token');
       }
 
-      // Load user via provider
       $user = $this->userProvider->loadUser ($sessionData ['user_id']);
 
       if (!$user) {
@@ -63,8 +53,23 @@ class TokenAuthentication
             ->error ('User not found');
       }
 
-      // Create authentication token and store it in current user storage
       $token = new AuthenticatedToken ($user, 'main', $user->getRoles ());
       $this->tokenStorage->setToken ($token);
+   }
+
+   public function getAuthorizationToken () : ?string
+   {
+      if (!$this->request->headers->has ($this->header)) {
+         return null;
+      }
+
+      $headerValue = $this->request->headers->get ($this->header);
+
+      if (!str_starts_with ($headerValue, $this->scheme)) {
+         return null;
+      }
+
+      $accessToken = substr ($headerValue, strlen ($this->scheme) + 1);
+      return $accessToken;
    }
 }

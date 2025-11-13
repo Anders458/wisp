@@ -27,6 +27,28 @@ class Request extends SymfonyRequest
       return $response;
    }
 
+   /**
+    * Get an input value from the request (query, body, or JSON)
+    *
+    * @param string $key The parameter name
+    * @param mixed $default Default value if not found
+    * @return mixed
+    */
+   public function input (string $key, mixed $default = null) : mixed
+   {
+      // Check JSON body first
+      if ($this->headers->get ('Content-Type') === 'application/json' ||
+          str_contains ($this->headers->get ('Content-Type', ''), 'application/json')) {
+         $data = json_decode ($this->getContent (), true);
+         if (is_array ($data) && array_key_exists ($key, $data)) {
+            return $data [$key];
+         }
+      }
+
+      // Fall back to Symfony's get() which checks request and query parameters
+      return $this->get ($key, $default);
+   }
+
    public function validate (string $dtoClass) : object
    {
       // Get request data based on content type

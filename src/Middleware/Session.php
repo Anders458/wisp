@@ -9,7 +9,7 @@ use Wisp\Http\Request;
 
 class Session
 {
-   private string $cookieName = '__Host-wisp_session';
+   private string $cookieName = 'wisp:session';
    private int $cookieLifetime = 604800;
    private bool $secure = true;
    private string $sameSite = Cookie::SAMESITE_LAX;
@@ -27,12 +27,15 @@ class Session
       if ($cookieName !== null) {
          $this->cookieName = $cookieName;
       }
+
       if ($cookieLifetime !== null) {
          $this->cookieLifetime = $cookieLifetime;
       }
+      
       if ($secure !== null) {
          $this->secure = $secure;
       }
+      
       if ($sameSite !== null) {
          $this->sameSite = $sameSite;
       }

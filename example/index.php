@@ -12,6 +12,7 @@ use Wisp\Example\Controller\ExamplesController;
 use Wisp\Example\Controller\HeroesController;
 use Wisp\Example\Controller\SystemController;
 use Wisp\Http\Request;
+use Wisp\Http\Response;
 use Wisp\Middleware\Authentication\TokenAuthentication;
 use Wisp\Middleware\CORS;
 use Wisp\Middleware\CSRF;
@@ -42,9 +43,11 @@ $app
    ->on (404, [ ErrorController::class, 'notFound' ])
    ->on (500, [ ErrorController::class, 'internalError' ])
 
-   ->middleware (Session::class)
+   ->middleware (Session::class, [
+      'cookieName' => 'wisp_session',  // Remove __Host- prefix for localhost testing
+      'secure' => false                 // Allow non-HTTPS for development
+   ])
    ->middleware (CORS::class)
-   ->middleware (CSRF::class)
    ->middleware (Helmet::class)
    ->middleware (Envelope::class)
 
@@ -70,14 +73,22 @@ $app
          ->get ('/download', [ ExamplesController::class, 'download' ])
          ->get ('/html',     [ ExamplesController::class, 'html' ])
          ->get ('/text',     [ ExamplesController::class, 'text' ])
+         ->post ('/form',    [ ExamplesController::class, 'form' ])
+            ->middleware (CSRF::class)
    )
 
    ->group ('/v1', fn ($group) =>
       $group
-         ->middleware (Throttle::class, [ 
-            'limit' => 100, 
-            'window' => 60 
+         ->middleware (Throttle::class, [
+            'limit' => 1000,
+            'window' => 10
          ])
+
+         ->get ('/csrf', function (CSRF $csrf) {
+            return (new Response ())->json ([ 
+               'token' => $csrf->getToken ()
+            ]);
+         })
 
          ->get ('/health-check', [ SystemController::class, 'healthCheck' ])
          ->get ('/heroes',       [ HeroesController::class, 'index' ])
@@ -86,9 +97,9 @@ $app
 
          ->group ('/gateway', fn ($group) =>
             $group
-               ->post ('/token/login',   [ TokenController::class, 'login' ])
-               ->post ('/token/refresh', [ TokenController::class, 'refresh' ])
-               ->post ('/token/logout',  [ TokenController::class, 'logout' ])
+               ->post ('/tokens/login',   [ TokenController::class, 'login' ])
+               ->post ('/tokens/refresh', [ TokenController::class, 'refresh' ])
+               ->post ('/tokens/logout',  [ TokenController::class, 'logout' ])
          )
 
          ->group ('/users', fn ($group) =>

@@ -15,7 +15,7 @@ class Throttle
       private Response $response,
 
       private int $limit  = 60,
-      private int $window = 60
+      private int $window = 10
    )
    {
    }

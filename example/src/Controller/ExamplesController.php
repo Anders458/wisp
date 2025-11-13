@@ -2,11 +2,13 @@
 
 namespace Wisp\Example\Controller;
 
+use Wisp\Http\Request;
 use Wisp\Http\Response;
 
 class ExamplesController
 {
    public function __construct (
+      private Request $request,
       private Response $response
    )
    {
@@ -54,6 +56,20 @@ class ExamplesController
    public function redirect ()
    {
       return $this->response->redirect ('/v1/heroes', 302);
+   }
+
+   public function form ()
+   {
+      $name = $this->request->input ('name');
+      $email = $this->request->input ('email');
+
+      return $this->response->json ([
+         'message' => 'Form submitted successfully (CSRF validated)',
+         'data' => [
+            'name' => $name,
+            'email' => $email
+         ]
+      ]);
    }
 
    public function text ()

@@ -46,7 +46,7 @@ use Wisp\Http\Response;
 use Wisp\Listener\AuthorizationListener;
 use Wisp\Listener\MiddlewareListener;
 use Wisp\Middleware\ETag;
-use Wisp\Security\TokenManager;
+use Wisp\Security\AccessTokenProvider;
 use Wisp\Security\UserProvider\CacheUserProvider;
 use Wisp\Environment\RuntimeInterface;
 use Wisp\Service\Flash;
@@ -258,7 +258,7 @@ class Wisp
          ->setPublic (true);
 
       $container
-         ->register (TokenManager::class)
+         ->register (AccessTokenProvider::class)
          ->setPublic (true)
          ->setArgument ('$cache', new Reference (CacheItemPoolInterface::class));
 

@@ -13,8 +13,7 @@ class Envelope
    public function __construct (
       private Request $request,
       private RuntimeInterface $runtime,
-      private FlashInterface $flash,
-      private ?CSRF $csrf = null
+      private FlashInterface $flash
    )
    {
    }
@@ -40,11 +39,6 @@ class Envelope
       $envelope ['debug'] = $this->runtime->isDebug ();
       $envelope ['query_time'] = round ($this->runtime->getElapsedTime (), 4);
       $envelope ['query_date'] = gmdate ('Y-m-d H:i:s');
-
-      // Include CSRF token if CSRF middleware is registered and session is available
-      if ($this->csrf !== null && $this->request->hasSession (skipIfUninitialized: true)) {
-         $envelope ['csrf'] = $this->csrf->getToken ();
-      }
 
       $envelope ['meta'] = [
          'method' => $this->request->getMethod (),

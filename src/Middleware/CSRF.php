@@ -16,7 +16,7 @@ class CSRF
       private Response $response,
       private SessionInterface $session,
       private CsrfTokenManagerInterface $csrfTokenManager,
-      private string $tokenId = 'wisp_csrf',
+      private string $tokenId = 'wisp:csrf',
       private string $header = 'X-CSRF-Token',
       private string $field = 'wisp:csrf.token'
    )
@@ -25,20 +25,17 @@ class CSRF
 
    public function before ()
    {
-      // Skip CSRF for API requests (with Authorization header)
       if ($this->request->headers->has ('Authorization')) {
          return;
       }
 
-      // Skip for read-only methods
       if (!in_array ($this->request->getMethod (), ['POST', 'PUT', 'DELETE', 'PATCH'])) {
          return;
       }
 
-      // Get token from header or form data
       $token = $this->request->headers->get ($this->header)
-         ?? $this->request->request->get ($this->field)
-         ?? '';
+            ?? $this->request->request->get ($this->field)
+            ?? '';
 
       if (!$token) {
          return $this->response
@@ -46,7 +43,6 @@ class CSRF
             ->error ('CSRF token missing');
       }
 
-      // Validate token using Symfony CSRF
       $csrfToken = new CsrfToken ($this->tokenId, $token);
 
       if (!$this->csrfTokenManager->isTokenValid ($csrfToken)) {

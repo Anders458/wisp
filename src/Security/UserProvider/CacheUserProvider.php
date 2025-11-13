@@ -35,4 +35,12 @@ class CacheUserProvider implements UserProviderInterface
          permissions: $data ['permissions'] ?? []
       );
    }
+
+   public function loadUserByIdentifier (string $identifier) : ?UserInterface
+   {
+      // CacheUserProvider is designed for loading users by ID (session/token restoration)
+      // For authentication by email/username, use a database-backed provider
+      // This implementation attempts to load by treating identifier as an ID
+      return $this->loadUser ($identifier);
+   }
 }
