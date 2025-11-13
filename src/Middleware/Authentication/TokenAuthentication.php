@@ -31,6 +31,13 @@ class TokenAuthentication
 
    public function before ()
    {
+      // Check if user is already authenticated (e.g., via CookieAuthentication)
+      $existingToken = $this->tokenStorage->getToken ();
+      if ($existingToken && $existingToken->getUser ()) {
+         // User already authenticated via another method, skip token validation
+         return;
+      }
+
       if (! ($accessToken = $this->getAuthorizationToken ())) {
          return $this->response
             ->status (401)

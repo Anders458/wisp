@@ -2,6 +2,7 @@
 
 require 'vendor/autoload.php';
 
+use Example\Controller\Gateway\CookieController;
 use Example\Controller\Gateway\TokenController;
 use Example\Controller\UserController;
 use Example\Security\DatabaseUserProvider;
@@ -84,8 +85,11 @@ $app
             'window' => 10
          ])
 
+         // Apply CookieAuthentication globally to enable cookie-based auth everywhere
+         ->middleware (Wisp\Middleware\Authentication\CookieAuthentication::class)
+
          ->get ('/csrf', function (CSRF $csrf) {
-            return (new Response ())->json ([ 
+            return (new Response ())->json ([
                'token' => $csrf->getToken ()
             ]);
          })
@@ -100,15 +104,16 @@ $app
                ->post ('/tokens/login',   [ TokenController::class, 'login' ])
                ->post ('/tokens/refresh', [ TokenController::class, 'refresh' ])
                ->post ('/tokens/logout',  [ TokenController::class, 'logout' ])
+                  ->middleware (TokenAuthentication::class)
+
+               ->post ('/cookie/login',  [ CookieController::class, 'login' ])
+               ->post ('/cookie/logout', [ CookieController::class, 'logout' ])
          )
 
-         ->group ('/users', fn ($group) =>
-            $group
-               ->middleware (TokenAuthentication::class)
-
-               ->get ('/@me', [ UserController::class, 'me' ])
-                  ->is ('admin')
-         )
+         // Supports both token and cookie auth
+         // CookieAuthentication runs globally, TokenAuthentication provides fallback for Bearer tokens
+         ->get ('/users/@me', [ UserController::class, 'me' ])
+            ->middleware (TokenAuthentication::class)
    );
 
 $app->run ();
