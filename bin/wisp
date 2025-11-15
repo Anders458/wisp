@@ -1,0 +1,29 @@
+#!/usr/bin/env php
+<?php
+
+require_once __DIR__ . '/../vendor/autoload.php';
+
+use Symfony\Component\Console\Application;
+use Wisp\Console\Command\CacheClearCommand;
+use Wisp\Console\Command\DebugContainerCommand;
+use Wisp\Console\Command\RouteListCommand;
+use Wisp\Console\Command\TokenGenerateCommand;
+use Wisp\Environment\Stage;
+use Wisp\Wisp;
+
+$root = dirname (__DIR__);
+
+$wisp = new Wisp ([
+   'root' => $root,
+   'debug' => true,
+   'stage' => Stage::development
+]);
+
+$console = new Application ('Wisp Framework', '1.0.0');
+
+$console->add (new CacheClearCommand ($root));
+$console->add (new RouteListCommand ($wisp->router));
+$console->add (new DebugContainerCommand ());
+$console->add (new TokenGenerateCommand ());
+
+$console->run ();

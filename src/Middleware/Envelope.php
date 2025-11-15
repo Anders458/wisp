@@ -47,12 +47,10 @@ class Envelope
          'params' => $this->request->attributes->get ('_route_params', [])
       ];
 
-      if (!empty ($this->flash->errors) || !empty ($this->flash->warnings) || $this->flash->code !== 0) {
-         $envelope ['flash'] = [
-            'errors' => $this->flash->errors,
-            'warnings' => $this->flash->warnings,
-            'code' => $this->flash->code
-         ];
+      $flashData = $this->flash->consume ();
+
+      if (!empty ($flashData ['errors']) || !empty ($flashData ['warnings']) || $flashData ['code'] !== 0) {
+         $envelope ['flash'] = $flashData;
       }
 
       $body = $response->getContent ();

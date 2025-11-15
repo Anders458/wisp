@@ -9,7 +9,7 @@ use Wisp\Service\FlashInterface;
 class ValidationException extends Exception
 {
    public function __construct (
-      private ConstraintViolationListInterface $violations
+      public readonly ConstraintViolationListInterface $violations
    )
    {
       parent::__construct ('Validation failed', 422);

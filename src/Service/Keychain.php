@@ -2,6 +2,7 @@
 
 namespace Wisp\Service;
 
+use Symfony\Component\PropertyAccess\PropertyAccessorInterface;
 use Symfony\Component\Yaml\Yaml;
 use Wisp\Environment\RuntimeInterface;
 
@@ -11,7 +12,8 @@ class Keychain implements KeychainInterface
 
    public function __construct (
       private string $path,
-      private RuntimeInterface $runtime
+      private RuntimeInterface $runtime,
+      private PropertyAccessorInterface $accessor
    )
    {
       $this->load ();
@@ -71,8 +73,23 @@ class Keychain implements KeychainInterface
       }
    }
 
-   public function get (string $name) : ?array
+   public function get (string $name) : mixed
    {
+      // Check if dot notation is used
+      if (str_contains ($name, '.')) {
+         // Split into config name and property path
+         $parts = explode ('.', $name, 2);
+         $configName = $parts [0];
+         $propertyPath = '[' . str_replace ('.', '][', $parts [1]) . ']';
+
+         if (!isset ($this->configs [$configName])) {
+            return null;
+         }
+
+         return $this->accessor->getValue ($this->configs [$configName], $propertyPath);
+      }
+
+      // Return full config array (backward compatibility)
       return $this->configs [$name] ?? null;
    }
 

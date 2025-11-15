@@ -22,6 +22,8 @@ use Symfony\Component\Security\Csrf\TokenGenerator\UriSafeTokenGenerator;
 use Symfony\Component\Security\Csrf\TokenStorage\SessionTokenStorage as CsrfSessionStorage;
 use Symfony\Component\PasswordHasher\Hasher\PasswordHasherFactory;
 use Symfony\Component\PasswordHasher\PasswordHasherInterface;
+use Symfony\Component\PropertyAccess\PropertyAccess;
+use Symfony\Component\PropertyAccess\PropertyAccessorInterface;
 use Wisp\Security\Voter\PermissionVoter;
 use Wisp\Security\Voter\RoleVoter;
 use Wisp\Session\CacheSessionStorage;
@@ -36,6 +38,8 @@ use Symfony\Component\HttpKernel\HttpKernel;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
 use Symfony\Component\Routing\Matcher\UrlMatcher;
 use Symfony\Component\Routing\RequestContext;
+use Symfony\Component\Serializer\SerializerInterface;
+use Symfony\Component\Translation\TranslatorInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Wisp\ArgumentResolver\ServiceValueResolver;
@@ -44,6 +48,7 @@ use Wisp\Environment\Stage;
 use Wisp\Http\Request;
 use Wisp\Http\Response;
 use Wisp\Listener\AuthorizationListener;
+use Wisp\Listener\ExceptionListener;
 use Wisp\Listener\MiddlewareListener;
 use Wisp\Middleware\ETag;
 use Wisp\Security\AccessTokenProvider;
@@ -60,17 +65,20 @@ class Wisp
    public readonly HttpKernel                $kernel;
    public readonly Router                    $router;
 
+   private string $root;
+   private bool $debug;
+
    public function __construct (array $settings = [])
    {
       $name    = $settings ['name']    ?? 'Wisp';
-      $root    = $settings ['root']    ?? getcwd ();
-      $config  = $settings ['config']  ?? $root . '/config';
-      $logs    = $settings ['logs']    ?? $root . '/logs';
+      $this->root    = $settings ['root']    ?? getcwd ();
+      $config  = $settings ['config']  ?? $this->root . '/config';
+      $logs    = $settings ['logs']    ?? $this->root . '/logs';
       $stage   = $settings ['stage']   ?? Stage::production;
-      $debug   = $settings ['debug']   ?? Stage::production !== $stage;
+      $this->debug   = $settings ['debug']   ?? Stage::production !== $stage;
       $version = $settings ['version'] ?? '1.0.0';
 
-      if ($debug) {
+      if ($this->debug) {
          Debug::enable ();
       }
 
@@ -94,9 +102,9 @@ class Wisp
          ->register (RuntimeInterface::class)
          ->setClass (Runtime::class)
          ->setPublic (true)
-         ->setArgument ('$root', $root)
+         ->setArgument ('$root', $this->root)
          ->setArgument ('$stage', $stage)
-         ->setArgument ('$debug', $debug)
+         ->setArgument ('$debug', $this->debug)
          ->setArgument ('$version', $version);
 
       // ============================================================
@@ -126,6 +134,11 @@ class Wisp
          ->setPublic (true)
          ->setAutowired (true);
 
+      $container
+         ->register (ExceptionListener::class)
+         ->setPublic (true)
+         ->setAutowired (true);
+
       // ============================================================
       // Application Services
       // ============================================================
@@ -133,7 +146,8 @@ class Wisp
       $container
          ->register (FlashInterface::class)
          ->setClass (Flash::class)
-         ->setPublic (true);
+         ->setPublic (true)
+         ->setAutowired (true);
 
       $container
          ->register (KeychainInterface::class)
@@ -161,7 +175,24 @@ class Wisp
          ->setFactory ([ Logger::class, 'create' ])
          ->setPublic (true)
          ->setArgument ('$path', $logs)
-         ->setArgument ('$debug', $debug);
+         ->setArgument ('$debug', $this->debug);
+
+      $container
+         ->register (PropertyAccessorInterface::class)
+         ->setFactory ([ PropertyAccess::class, 'createPropertyAccessor' ])
+         ->setPublic (true);
+
+      $container
+         ->register (SerializerInterface::class)
+         ->setFactory ([ SerializerFactory::class, 'create' ])
+         ->setPublic (true);
+
+      $container
+         ->register (TranslatorInterface::class)
+         ->setFactory ([ TranslatorFactory::class, 'create' ])
+         ->setPublic (true)
+         ->setArgument ('$localesDir', $this->root . '/i18n')
+         ->setArgument ('$defaultLocale', 'en');
 
       $container
          ->register (ValidatorInterface::class)
@@ -292,12 +323,27 @@ class Wisp
 
    public function run () : void
    {
+      // Configure route caching
+      $cacheDir = $this->root . '/var/cache/routes';
+      $this->router->setCacheDir ($cacheDir);
+      $this->router->setDebug ($this->debug);
+
+      // Load routes from cache if available (only in non-debug mode)
+      if (!$this->debug && $this->router->isCacheValid ()) {
+         $this->router->loadFromCache ();
+      }
+
       $container = Container::instance ();
 
       $container->compile ();
 
       $container->set (Wisp::class, $this);
       $container->set (Router::class, $this->router);
+
+      // Warm up route cache if not in debug mode
+      if (!$this->debug && !$this->router->isCacheValid ()) {
+         $this->router->warmup ();
+      }
 
       $request = Request::createFromGlobals ();
       $response = new Response ();
@@ -320,6 +366,10 @@ class Wisp
             $matcher,
             $requestStack
          )
+      );
+
+      $dispatcher->addSubscriber (
+         $container->get (ExceptionListener::class)
       );
 
       $dispatcher->addSubscriber (

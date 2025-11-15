@@ -12,6 +12,8 @@ class Router
    public RouteCollection $routes;
 
    private array $registry = [];
+   private ?string $cacheDir = null;
+   private bool $debug = false;
 
    public function __construct ()
    {
@@ -26,16 +28,12 @@ class Router
       $action = $route->getAction ();
 
       // If action is [ClassName::class, 'method'], register the controller in container
-      
       if (is_array ($action)) {
          Container::instance ()
             ->register ($action [0])
             ->setAutowired (true)
             ->setPublic (true);
       }
-
-      // var_dump ($fullPath);
-      // die ();
 
       // Create Symfony route
       $symfonyRoute = new SymfonyRoute (
@@ -83,8 +81,71 @@ class Router
       return implode ('', $parts);
    }
 
+   public function isCacheValid () : bool
+   {
+      if ($this->debug || !$this->cacheDir) {
+         return false;
+      }
+
+      $cacheFile = $this->getCacheFile ();
+      return file_exists ($cacheFile);
+   }
+
+   public function loadFromCache () : void
+   {
+      if (!$this->cacheDir) {
+         return;
+      }
+
+      $cacheFile = $this->getCacheFile ();
+
+      if (!file_exists ($cacheFile)) {
+         return;
+      }
+
+      $data = unserialize (file_get_contents ($cacheFile));
+      $this->routes = $data ['routes'];
+      $this->registry = $data ['registry'];
+   }
+
+   public function setCacheDir (string $dir) : self
+   {
+      $this->cacheDir = $dir;
+      return $this;
+   }
+
+   public function setDebug (bool $debug) : self
+   {
+      $this->debug = $debug;
+      return $this;
+   }
+
+   public function warmup () : void
+   {
+      if ($this->debug || !$this->cacheDir) {
+         return;
+      }
+
+      if (!is_dir ($this->cacheDir)) {
+         mkdir ($this->cacheDir, 0755, true);
+      }
+
+      $cacheFile = $this->getCacheFile ();
+      $data = [
+         'routes' => $this->routes,
+         'registry' => $this->registry
+      ];
+
+      file_put_contents ($cacheFile, serialize ($data));
+   }
+
    public function __call (string $method, array $args) : RouteGroup | Route
    {
       return $this->root->$method (... $args);
+   }
+
+   private function getCacheFile () : string
+   {
+      return $this->cacheDir . '/routes.cache';
    }
 }

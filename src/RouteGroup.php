@@ -64,19 +64,9 @@ class RouteGroup
          $path
       );
 
-      // $this->groups [] = $group;
-
       $callback ($group);
 
       return $this;
    }
 
-   // public function __call (string $method, array $args) : Route | RouteGroup | Router
-   // {
-   //    if ($this->parent) {
-   //       return $this->parent->$method (... $args);
-   //    }
-
-   //    return $this->router->$method (... $args);
-   // }
 }
