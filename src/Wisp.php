@@ -176,7 +176,10 @@ class Wisp
          ->register (CacheSessionStorage::class)
          ->setArguments ([
             '$cache' => new Reference (CacheItemPoolInterface::class),
-            '$ttl' => 604800 // 7 days
+            '$ttl' => 604800, // 7 days
+            '$name' => 'wisp_session',
+            '$secure' => false, // Set to true in production with HTTPS
+            '$sameSite' => 'lax'
          ])
          ->setPublic (true);
 

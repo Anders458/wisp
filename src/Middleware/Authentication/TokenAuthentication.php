@@ -17,12 +17,6 @@ class TokenAuthentication
       private CurrentUserStorageInterface $tokenStorage,
       private AccessTokenProvider $accessTokenProvider,
       private UserProviderInterface $userProvider,
-      
-      private array $ttl = [
-         'access' => 3600, 
-         'refresh' => 604800
-      ],
-
       private string $header = 'Authorization',
       private string $scheme = 'Bearer'
    )
@@ -31,19 +25,12 @@ class TokenAuthentication
 
    public function before ()
    {
-      // Check if user is already authenticated (e.g., via CookieAuthentication)
-      $existingToken = $this->tokenStorage->getToken ();
-      if ($existingToken && $existingToken->getUser ()) {
-         // User already authenticated via another method, skip token validation
+      // If no Bearer token present, skip (don't fail - let guards handle auth requirement)
+      if (! ($accessToken = $this->getAuthorizationToken ())) {
          return;
       }
 
-      if (! ($accessToken = $this->getAuthorizationToken ())) {
-         return $this->response
-            ->status (401)
-            ->error ("Token-based authentication requires a {$this->scheme} token in the {$this->header} header");
-      }
-
+      // Only validate if Bearer token IS present
       $sessionData = $this->accessTokenProvider->validate ($accessToken);
 
       if (!$sessionData) {

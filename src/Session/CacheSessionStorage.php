@@ -4,67 +4,37 @@ namespace Wisp\Session;
 
 use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Component\HttpFoundation\Session\Storage\MetadataBag;
-use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
+use Symfony\Component\HttpFoundation\Session\Storage\NativeSessionStorage;
 
-class CacheSessionStorage extends MockArraySessionStorage
+class CacheSessionStorage extends NativeSessionStorage
 {
    public function __construct (
       private CacheItemPoolInterface $cache,
       private int $ttl = 604800,
-      string $name = 'wisp:session',
+      string $name = 'wisp_session',
+      bool $secure = false,
+      string $sameSite = 'lax',
       ?MetadataBag $metaBag = null
    )
    {
-      parent::__construct ($name, $metaBag);
-   }
+      // Use NativeSessionStorage with custom handler
+      $handler = new CacheSessionHandler ($cache, $ttl);
 
-   public function regenerate (bool $destroy = false, ?int $lifetime = null) : bool
-   {
-      if (!$this->started) {
-         $this->start ();
-      }
-
-      if ($destroy && $this->id) {
-         $this->cache->deleteItem ("wisp:session:{$this->id}");
-      }
-
-      return parent::regenerate ($destroy, $lifetime);
-   }
-
-   protected function loadSession () : void
-   {
-      $item = $this->cache->getItem ("wisp:session:{$this->id}");
-
-      if ($item->isHit ()) {
-         $data = $item->get ();
-
-         if (is_array ($data)) {
-            $this->setSessionData ($data);
-         }
-      }
-   }
-
-   public function save () : void
-   {
-      if (!$this->started || $this->closed) {
-         return;
-      }
-
-      if (empty ($this->id)) {
-         throw new \RuntimeException ('Session ID must be set before saving.');
-      }
-
-      $data = [];
-      foreach ($this->bags as $bag) {
-         $data [$bag->getStorageKey ()] = $bag->getBag ();
-      }
-
-      $item = $this->cache->getItem ("wisp:session:{$this->id}");
-      $item->set ($data);
-      $item->expiresAfter ($this->ttl);
-      $this->cache->save ($item);
-
-      $this->closed = true;
-      $this->started = false;
+      parent::__construct (
+         [
+            'name' => $name,
+            'cookie_lifetime' => $ttl,
+            'cookie_path' => '/',
+            'cookie_secure' => $secure,
+            'cookie_httponly' => true,
+            'cookie_samesite' => $sameSite,
+            'gc_maxlifetime' => $ttl,
+            'use_cookies' => 1,           // Let PHP handle cookie automatically
+            'use_only_cookies' => 1,      // Security: Only use cookies (not URL params)
+            'use_trans_sid' => 0,         // Security: Don't append session ID to URLs
+         ],
+         $handler,
+         $metaBag
+      );
    }
 }

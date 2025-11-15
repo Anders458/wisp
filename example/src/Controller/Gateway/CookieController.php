@@ -58,7 +58,6 @@ class CookieController
       return $this->response
          ->status (200)
          ->json ([
-            'message' => 'Login successful',
             'user' => [
                'id' => $user->getId (),
                'role' => $user->getRole (),
@@ -77,8 +76,6 @@ class CookieController
 
       return $this->response
          ->status (200)
-         ->json ([
-            'message' => 'Logout successful'
-         ]);
+         ->json ();
    }
 }

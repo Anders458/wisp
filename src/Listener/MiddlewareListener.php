@@ -6,6 +6,7 @@ use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Symfony\Component\HttpKernel\Controller\ArgumentResolverInterface;
 use Symfony\Component\HttpKernel\Event\ControllerArgumentsEvent;
+use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\Event\ResponseEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
 use Wisp\Http\Request;
@@ -28,30 +29,45 @@ class MiddlewareListener implements EventSubscriberInterface
    public static function getSubscribedEvents () : array
    {
       return [
-         KernelEvents::CONTROLLER_ARGUMENTS => [ 'onBefore', 0 ],
+         // Run middleware pipeline after RouterListener (32) but before AuthorizationListener (16)
+         KernelEvents::REQUEST => [ 'onRequest', 20 ],
+         // Run controller hooks before controller execution
+         KernelEvents::CONTROLLER_ARGUMENTS => [ 'onControllerArguments', 0 ],
          KernelEvents::RESPONSE => [ 'onAfter', 0 ]
       ];
    }
 
-   public function onBefore (ControllerArgumentsEvent $event) : void
+   public function onRequest (RequestEvent $event) : void
    {
-      $request = $event->getRequest ();
-
-      $route = $this->getRoute ($request);
-
-      if ($route) {
-         $response = $this->executePipeline ($route->getPipeline (Hook::Before), $request);
-
-         if ($response) {
-            $event->setController (fn () => $response);
-            return;
-         }
+      if (!$event->isMainRequest ()) {
+         return;
       }
 
+      $request = $event->getRequest ();
+      $route = $this->getRoute ($request);
+
+      if (!$route) {
+         return;
+      }
+
+      // Execute middleware pipeline (includes authentication middleware)
+      $response = $this->executePipeline ($route->getPipeline (Hook::Before), $request);
+
+      if ($response) {
+         // Middleware returned a response - stop processing and return it
+         $event->setResponse ($response);
+         $event->stopPropagation ();
+      }
+   }
+
+   public function onControllerArguments (ControllerArgumentsEvent $event) : void
+   {
+      $request = $event->getRequest ();
       $controller = $event->getController ();
 
       array_push ($this->stack, $controller);
 
+      // Execute controller before() hook
       $response = $this->executeControllerHook ($controller, Hook::Before->value, $request);
 
       if ($response) {

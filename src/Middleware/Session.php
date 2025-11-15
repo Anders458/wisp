@@ -2,57 +2,40 @@
 
 namespace Wisp\Middleware;
 
-use Symfony\Component\HttpFoundation\Cookie;
-use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
 use Wisp\Http\Request;
 
+/**
+ * Session Middleware
+ *
+ * Starts the PHP session and makes it available to the request.
+ * Session configuration (cookie name, security settings, storage) is handled
+ * by CacheSessionStorage which is registered in the DI container.
+ *
+ * COOKIE HANDLING:
+ * Session cookies are automatically managed by PHP's NativeSessionStorage.
+ * The session ID is read from $_COOKIE and the Set-Cookie header is sent
+ * automatically when the session is started or modified. No manual cookie
+ * handling is needed in this middleware.
+ */
 class Session
 {
-   private string $cookieName = 'wisp:session';
-   private int $cookieLifetime = 604800;
-   private bool $secure = true;
-   private string $sameSite = Cookie::SAMESITE_LAX;
-
    public function __construct (
       private SessionInterface $session,
-      private Request $request,
-      private SymfonyResponse $response,
-      ?string $cookieName = null,
-      ?int $cookieLifetime = null,
-      ?bool $secure = null,
-      ?string $sameSite = null
+      private Request $request
    )
    {
-      if ($cookieName !== null) {
-         $this->cookieName = $cookieName;
-      }
-
-      if ($cookieLifetime !== null) {
-         $this->cookieLifetime = $cookieLifetime;
-      }
-      
-      if ($secure !== null) {
-         $this->secure = $secure;
-      }
-      
-      if ($sameSite !== null) {
-         $this->sameSite = $sameSite;
-      }
    }
 
    public function before () : void
    {
-      $sessionId = $this->request->cookies->get ($this->cookieName);
-
-      if ($sessionId) {
-         $this->session->setId ($sessionId);
-      }
-
+      // Start session - PHP automatically reads session ID from cookie
+      // and sends Set-Cookie header via NativeSessionStorage
       if (!$this->session->isStarted ()) {
          $this->session->start ();
       }
 
+      // Make session available to request
       $this->request->setSession ($this->session);
    }
 
@@ -66,22 +49,5 @@ class Session
    public function regenerate (bool $deleteOldSession = true) : void
    {
       $this->session->migrate ($deleteOldSession);
-   }
-
-   public function after () : void
-   {
-      if ($this->session->isStarted ()) {
-         $this->session->save ();
-
-         $cookie = Cookie::create ($this->cookieName)
-            ->withValue ($this->session->getId ())
-            ->withExpires (time () + $this->cookieLifetime)
-            ->withPath ('/')
-            ->withSecure ($this->secure)
-            ->withHttpOnly (true)
-            ->withSameSite ($this->sameSite);
-
-         $this->response->headers->setCookie ($cookie);
-      }
    }
 }

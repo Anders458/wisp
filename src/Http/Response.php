@@ -73,10 +73,14 @@ class Response extends SymfonyResponse
       return $this;
    }
 
-   public function json (mixed $data) : self
+   public function json (mixed $data = null) : self
    {
       $this->headers->set ('Content-Type', 'application/json');
-      $this->setContent (json_encode ($data, JSON_THROW_ON_ERROR));
+      
+      if (!empty ($data)) {
+         $this->setContent (json_encode ($data, JSON_THROW_ON_ERROR));
+      }
+
       return $this;
    }
 

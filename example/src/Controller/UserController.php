@@ -14,15 +14,8 @@ class UserController
 
    public function me () : Response
    {
-      $token = $this->tokenStorage->getToken ();
-
-      if (!$token || !$token->getUser ()) {
-         return $this->response
-            ->status (401)
-            ->error ('Authentication required');
-      }
-
-      $user = $token->getUser ();
+      // Guard already ensured user is authenticated
+      $user = $this->tokenStorage->getToken ()->getUser ();
 
       return $this->response->json ([
          'id' => $user->getId (),

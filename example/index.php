@@ -7,6 +7,7 @@ use Example\Controller\Gateway\TokenController;
 use Example\Controller\UserController;
 use Example\Security\DatabaseUserProvider;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\HttpFoundation\Session\SessionInterface;
 use Wisp\Environment\Stage;
 use Wisp\Example\Controller\ErrorController;
 use Wisp\Example\Controller\ExamplesController;
@@ -14,6 +15,8 @@ use Wisp\Example\Controller\HeroesController;
 use Wisp\Example\Controller\SystemController;
 use Wisp\Http\Request;
 use Wisp\Http\Response;
+use Wisp\Middleware\Authentication\CookieAuthentication;
+use Wisp\Middleware\Authentication\SessionAuthentication;
 use Wisp\Middleware\Authentication\TokenAuthentication;
 use Wisp\Middleware\CORS;
 use Wisp\Middleware\CSRF;
@@ -44,13 +47,13 @@ $app
    ->on (404, [ ErrorController::class, 'notFound' ])
    ->on (500, [ ErrorController::class, 'internalError' ])
 
-   ->middleware (Session::class, [
-      'cookieName' => 'wisp_session',  // Remove __Host- prefix for localhost testing
-      'secure' => false                 // Allow non-HTTPS for development
-   ])
+   ->middleware (Session::class)
    ->middleware (CORS::class)
    ->middleware (Helmet::class)
    ->middleware (Envelope::class)
+
+   ->middleware (CookieAuthentication::class)
+   ->middleware (TokenAuthentication::class)
 
    ->before (function () {
       $config   = container (KeychainInterface::class)->get ('config');
@@ -68,16 +71,6 @@ $app
       $logger->debug ('Global after');
    })
 
-   ->group ('/examples', fn ($group) =>
-      $group
-         ->get ('/redirect', [ ExamplesController::class, 'redirect' ])
-         ->get ('/download', [ ExamplesController::class, 'download' ])
-         ->get ('/html',     [ ExamplesController::class, 'html' ])
-         ->get ('/text',     [ ExamplesController::class, 'text' ])
-         ->post ('/form',    [ ExamplesController::class, 'form' ])
-            ->middleware (CSRF::class)
-   )
-
    ->group ('/v1', fn ($group) =>
       $group
          ->middleware (Throttle::class, [
@@ -85,8 +78,8 @@ $app
             'window' => 10
          ])
 
-         // Apply CookieAuthentication globally to enable cookie-based auth everywhere
-         ->middleware (Wisp\Middleware\Authentication\CookieAuthentication::class)
+         // Apply SessionAuthentication globally to enable session-based auth everywhere
+         ->middleware (SessionAuthentication::class)
 
          ->get ('/csrf', function (CSRF $csrf) {
             return (new Response ())->json ([
@@ -104,16 +97,33 @@ $app
                ->post ('/tokens/login',   [ TokenController::class, 'login' ])
                ->post ('/tokens/refresh', [ TokenController::class, 'refresh' ])
                ->post ('/tokens/logout',  [ TokenController::class, 'logout' ])
-                  ->middleware (TokenAuthentication::class)
 
                ->post ('/cookie/login',  [ CookieController::class, 'login' ])
                ->post ('/cookie/logout', [ CookieController::class, 'logout' ])
          )
 
-         // Supports both token and cookie auth
-         // CookieAuthentication runs globally, TokenAuthentication provides fallback for Bearer tokens
+         ->group ('/examples', fn ($group) =>
+            $group
+               ->get ('/redirect', [ ExamplesController::class, 'redirect' ])
+               ->get ('/download', [ ExamplesController::class, 'download' ])
+               ->get ('/html',     [ ExamplesController::class, 'html' ])
+               ->get ('/text',     [ ExamplesController::class, 'text' ])
+               ->post ('/form',    [ ExamplesController::class, 'form' ])
+                  ->middleware (CSRF::class)
+
+               ->get ('/session-test', function (SessionInterface $session) {
+                  $counter = $session->get ('counter', 0);
+                  $session->set ('counter', $counter + 1);
+
+                  return (new Response ())->json ([
+                     'counter' => $counter + 1,
+                     'message' => 'Session test endpoint - counter increments with each request'
+                  ]);
+               })
+         )
+
          ->get ('/users/@me', [ UserController::class, 'me' ])
-            ->middleware (TokenAuthentication::class)
+            ->is ('user')
    );
 
 $app->run ();

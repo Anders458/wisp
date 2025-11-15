@@ -27,8 +27,6 @@ use Wisp\Router;
  *
  *    $app->post ('/posts', [PostController::class, 'create'])
  *       ->can ('create:posts');  // Automatically enforced!
- *
- * No middleware registration needed - the framework handles it.
  */
 class AuthorizationListener implements EventSubscriberInterface
 {
