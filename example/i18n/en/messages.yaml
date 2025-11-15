@@ -1,0 +1,12 @@
+hero:
+  created: "Hero created successfully"
+  updated: "Hero updated successfully"
+  deleted: "Hero deleted successfully"
+  not_found: "Hero not found"
+  list_title: "Heroes"
+
+health:
+  ok: "Service is healthy"
+
+system:
+  version: "System version"

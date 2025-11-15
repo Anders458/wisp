@@ -22,8 +22,8 @@ use Wisp\Middleware\CORS;
 use Wisp\Middleware\CSRF;
 use Wisp\Middleware\Envelope;
 use Wisp\Middleware\Helmet;
+use Wisp\Middleware\RateLimiter;
 use Wisp\Middleware\Session;
-use Wisp\Middleware\Throttle;
 use Wisp\Security\Contracts\UserProviderInterface;
 use Wisp\Service\KeychainInterface;
 use Wisp\Wisp;
@@ -73,9 +73,10 @@ $app
 
    ->group ('/v1', fn ($group) =>
       $group
-         ->middleware (Throttle::class, [
+         ->middleware (RateLimiter::class, [
             'limit' => 1000,
-            'window' => 10
+            'interval' => 10,
+            'strategy' => 'sliding_window'
          ])
 
          // Apply SessionAuthentication globally to enable session-based auth everywhere
