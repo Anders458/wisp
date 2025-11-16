@@ -16,7 +16,7 @@ class AccessTokenProvider
    {
    }
 
-   public function become (int | string $userId, string $role, array $permissions) : array
+   public function become (int | string $userId, array $roles, array $permissions) : array
    {
       $accessToken = bin2hex (random_bytes (32));
       $refreshToken = bin2hex (random_bytes (32));
@@ -26,7 +26,7 @@ class AccessTokenProvider
 
       $sessionData = [
          'user_id'               => $userId,
-         'role'                  => $role,
+         'roles'                 => $roles,
          'permissions'           => $permissions,
          'created_at'            => time (),
          'hashed_refresh_token'  => $hashedRefreshToken
@@ -41,7 +41,7 @@ class AccessTokenProvider
       $refreshItem = $this->cache->getItem ("wisp:refresh:{$hashedRefreshToken}");
       $refreshItem->set ([
          'user_id'               => $userId,
-         'role'                  => $role,
+         'roles'                 => $roles,
          'permissions'           => $permissions,
          'hashed_access_token'   => $hashedAccessToken
       ]);
@@ -74,7 +74,7 @@ class AccessTokenProvider
 
       return $this->become (
          $refreshData ['user_id'],
-         $refreshData ['role'],
+         $refreshData ['roles'],
          $refreshData ['permissions']
       );
    }

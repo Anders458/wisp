@@ -25,13 +25,13 @@ class CacheUserProvider implements UserProviderInterface
 
       $data = $item->get ();
 
-      if (!is_array ($data) || !isset ($data ['id'], $data ['role'])) {
+      if (!is_array ($data) || !isset ($data ['id'], $data ['roles'])) {
          return null;
       }
 
       return new User (
          id: $data ['id'],
-         role: $data ['role'],
+         roles: $data ['roles'],
          permissions: $data ['permissions'] ?? []
       );
    }

@@ -30,8 +30,6 @@ class CacheSessionStorage extends NativeSessionStorage
             'cookie_samesite' => $sameSite,
             'gc_maxlifetime' => $ttl,
             'use_cookies' => 1,           // Let PHP handle cookie automatically
-            'use_only_cookies' => 1,      // Security: Only use cookies (not URL params)
-            'use_trans_sid' => 0,         // Security: Don't append session ID to URLs
          ],
          $handler,
          $metaBag

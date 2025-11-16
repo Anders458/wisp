@@ -4,22 +4,17 @@
 require __DIR__ . '/../vendor/autoload.php';
 
 use Symfony\Component\Console\Application;
-use Symfony\Component\Routing\Command\DebugCommand;
-use Symfony\Component\Routing\Command\MatchCommand;
+use Wisp\Console\Command\RouteListCommand;
 use Wisp\Wisp;
 
-// Bootstrap your Wisp app to register routes
 $app = require __DIR__ . '/../example/index.php';
 
 if (!$app instanceof Wisp) {
    throw new RuntimeException ('example/index.php must return a Wisp instance');
 }
 
-// Create console application
 $console = new Application ('Wisp Console', '1.0.0');
 
-// Add routing commands with your router's RouteCollection
-$console->add (new DebugCommand ($app->router->getRoutes ()));
-$console->add (new MatchCommand ($app->router->getRoutes ()));
+$console->add (new RouteListCommand ($app->router));
 
 $console->run ();

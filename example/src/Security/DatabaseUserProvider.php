@@ -13,7 +13,7 @@ class DatabaseUserProvider implements UserProviderInterface
       [
          'id' => 1,
          'email' => 'user@example.com',
-         'role' => 'user',
+         'roles' => [ 'user' ],
          'permissions' => [ 'read:own', 'write:own' ],
          'password' => '$2y$13$gZWracOSRGuEQsz7ltGqCuevzdeBB6ednqL5o7a5U3iyiz5VcQ/J.' // "secret"
       ],
@@ -21,7 +21,7 @@ class DatabaseUserProvider implements UserProviderInterface
       [
          'id' => 2,
          'email' => 'admin@example.com',
-         'role' => 'admin',
+         'roles' => [ 'admin', 'user' ],
          'permissions' => [ '*' ],
          'password' => '$2y$13$gZWracOSRGuEQsz7ltGqCuevzdeBB6ednqL5o7a5U3iyiz5VcQ/J.' // "secret"
       ]
@@ -36,7 +36,7 @@ class DatabaseUserProvider implements UserProviderInterface
          ) {
             return new User (
                id: $userData ['id'],
-               role: $userData ['role'],
+               roles: $userData ['roles'],
                permissions: $userData ['permissions'],
                password: $userData ['password']
             );

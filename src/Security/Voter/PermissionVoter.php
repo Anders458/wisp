@@ -3,6 +3,7 @@
 namespace Wisp\Security\Voter;
 
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface as AuthenticationToken;
+use Symfony\Component\Security\Core\Authorization\Voter\Vote;
 use Symfony\Component\Security\Core\Authorization\Voter\Voter;
 use Wisp\Security\User;
 
@@ -14,7 +15,7 @@ class PermissionVoter extends Voter
       return str_contains ($attribute, ':');
    }
 
-   protected function voteOnAttribute (string $attribute, mixed $subject, AuthenticationToken $token) : bool
+   protected function voteOnAttribute (string $attribute, mixed $subject, AuthenticationToken $token, ?Vote $vote = null) : bool
    {
       $user = $token->getUser ();
 

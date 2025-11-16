@@ -23,7 +23,7 @@ class TokenGenerateCommand extends Command
    {
       $this
          ->addArgument ('user_id', InputArgument::REQUIRED, 'User ID')
-         ->addArgument ('role', InputArgument::REQUIRED, 'User role')
+         ->addArgument ('roles', InputArgument::REQUIRED, 'User roles (comma-separated)')
          ->addArgument ('permissions', InputArgument::OPTIONAL, 'Permissions (comma-separated)', '')
          ->addOption ('ttl', 't', InputOption::VALUE_OPTIONAL, 'Token TTL in seconds', 3600);
    }
@@ -33,10 +33,11 @@ class TokenGenerateCommand extends Command
       $io = new SymfonyStyle ($input, $output);
 
       $userId = $input->getArgument ('user_id');
-      $role = $input->getArgument ('role');
+      $rolesStr = $input->getArgument ('roles');
       $permissionsStr = $input->getArgument ('permissions');
       $ttl = (int) $input->getOption ('ttl');
 
+      $roles = explode (',', $rolesStr);
       $permissions = !empty ($permissionsStr)
          ? explode (',', $permissionsStr)
          : [];
@@ -47,7 +48,7 @@ class TokenGenerateCommand extends Command
          'refresh' => $ttl * 7
       ]);
 
-      $tokens = $provider->become ($userId, $role, $permissions);
+      $tokens = $provider->become ($userId, $roles, $permissions);
 
       $io->success ('Token generated successfully');
       $io->section ('Access Token');

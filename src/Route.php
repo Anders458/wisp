@@ -18,10 +18,29 @@ class Route
       private string $path,
       private array | Closure $action
    ) {
-      // Generate unique name by combining methods and path
-      // E.g., "GET|/heroes" or "POST|/heroes" or "GET|POST|/heroes"
+      // Generate unique name by combining methods and full path
+      // E.g., "GET|/v1/heroes" or "POST|/v1/heroes" or "GET|POST|/v1/heroes"
       $methodString = implode ('|', $this->methods);
-      $this->name = $methodString . '|' . $this->path;
+      $fullPath = $this->buildFullPath ();
+      $this->name = $methodString . '|' . $fullPath;
+   }
+
+   private function buildFullPath () : string
+   {
+      $parts = [];
+      $current = $this->parent;
+
+      while ($current) {
+         if ($current->getPath ()) {
+            array_unshift ($parts, $current->getPath ());
+         }
+
+         $current = $current->getParent ();
+      }
+
+      $parts [] = $this->path;
+
+      return implode ('', $parts);
    }
 
    public function getAction () : mixed

@@ -39,7 +39,7 @@ use Symfony\Component\HttpKernel\HttpKernelInterface;
 use Symfony\Component\Routing\Matcher\UrlMatcher;
 use Symfony\Component\Routing\RequestContext;
 use Symfony\Component\Serializer\SerializerInterface;
-use Symfony\Component\Translation\TranslatorInterface;
+use Symfony\Contracts\Translation\TranslatorInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Wisp\ArgumentResolver\ServiceValueResolver;
@@ -321,8 +321,16 @@ class Wisp
       return Container::instance ();
    }
 
-   public function run () : void
+   /**
+    * Initialize the framework without running a request
+    * Used for testing and CLI commands
+    */
+   public function initialize () : void
    {
+      if (isset ($this->kernel)) {
+         return; // Already initialized
+      }
+
       // Configure route caching
       $cacheDir = $this->root . '/var/cache/routes';
       $this->router->setCacheDir ($cacheDir);
@@ -345,34 +353,17 @@ class Wisp
          $this->router->warmup ();
       }
 
-      $request = Request::createFromGlobals ();
-      $response = new Response ();
-
-      $container->set (Request::class, $request);
-      $container->set (SymfonyResponse::class, $response);
-
-      $dispatcher = $container->get (EventDispatcherInterface::class);
-
-      $context = (new RequestContext ())
-         ->fromRequest ($request);
-
-         $matcher = new UrlMatcher ($this->router->routes, $context);
+      $this->dispatcher = $container->get (EventDispatcherInterface::class);
 
       $requestStack = $container->get (RequestStack::class);
-      $requestStack->push ($request);
 
-      $dispatcher->addSubscriber (
-         new RouterListener (
-            $matcher,
-            $requestStack
-         )
-      );
-
-      $dispatcher->addSubscriber (
+      // Add ExceptionListener
+      $this->dispatcher->addSubscriber (
          $container->get (ExceptionListener::class)
       );
 
-      $dispatcher->addSubscriber (
+      // Add AuthorizationListener
+      $this->dispatcher->addSubscriber (
          $container->get (AuthorizationListener::class)
       );
 
@@ -386,26 +377,63 @@ class Wisp
          )
       );
 
-      $dispatcher->addSubscriber (
+      $this->dispatcher->addSubscriber (
          new MiddlewareListener (
             $argumentResolver,
             $this->router
          )
       );
 
-      $kernel = new HttpKernel (
-         $dispatcher,
+      $this->kernel = new HttpKernel (
+         $this->dispatcher,
          $controllerResolver,
          null,
          $argumentResolver
       );
 
-      $container->set (HttpKernelInterface::class, $kernel);
+      $container->set (HttpKernelInterface::class, $this->kernel);
+   }
 
-      $response = $kernel->handle ($request);
+   /**
+    * Handle a request manually
+    * Used for testing
+    */
+   public function handleRequest (Request $request) : SymfonyResponse
+   {
+      $this->initialize ();
+
+      $container = Container::instance ();
+
+      $container->set (Request::class, $request);
+      $container->set (SymfonyResponse::class, new Response ());
+
+      $context = (new RequestContext ())
+         ->fromRequest ($request);
+
+      $matcher = new UrlMatcher ($this->router->routes, $context);
+
+      $requestStack = $container->get (RequestStack::class);
+      $requestStack->push ($request);
+
+      $this->dispatcher->addSubscriber (
+         new RouterListener (
+            $matcher,
+            $requestStack
+         )
+      );
+
+      return $this->kernel->handle ($request);
+   }
+
+   public function run () : void
+   {
+      $request = Request::createFromGlobals ();
+      $response = $this->handleRequest ($request);
+
+      $response = $this->kernel->handle ($request);
       $response->send ();
 
-      $kernel->terminate ($request, $response);
+      $this->kernel->terminate ($request, $response);
    }
 
    public function __call (string $method, array $args) : mixed

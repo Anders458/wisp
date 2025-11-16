@@ -29,7 +29,7 @@ class CookieController
       if (!$email || !$password) {
          return $this->response
             ->status (400)
-            ->error ('Email and password are required');
+            ->error (__ ('gateway.email_password_required'));
       }
 
       // Load user by email
@@ -38,7 +38,7 @@ class CookieController
       if (!$user || !$this->passwordHasher->verify ($user->getPassword (), $password)) {
          return $this->response
             ->status (401)
-            ->error ('Invalid credentials');
+            ->error (__ ('gateway.invalid_credentials'));
       }
 
       // Password rehash if needed
@@ -60,7 +60,7 @@ class CookieController
          ->json ([
             'user' => [
                'id' => $user->getId (),
-               'role' => $user->getRole (),
+               'roles' => $user->getRoles (),
                'permissions' => $user->getPermissions ()
             ]
          ]);

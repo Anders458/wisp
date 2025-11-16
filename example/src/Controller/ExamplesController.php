@@ -2,8 +2,10 @@
 
 namespace Wisp\Example\Controller;
 
+use Example\Request\CreateUserRequest;
 use Wisp\Http\Request;
 use Wisp\Http\Response;
+use Wisp\Http\ValidationException;
 
 class ExamplesController
 {
@@ -24,32 +26,74 @@ class ExamplesController
 
       return $this->response
          ->status (404)
-         ->error ('Log file not found');
+         ->error (__ ('examples.log_not_found'));
+   }
+
+   public function validation ()
+   {
+      try {
+         // Validate request using DTO
+         $dto = $this->request->validate (CreateUserRequest::class);
+
+         // If validation passes, return the validated data
+         return $this->response->json ([
+            'message' => 'User created successfully',
+            'user' => [
+               'email' => $dto->email,
+               'username' => $dto->username,
+               'age' => $dto->age,
+               'role' => $dto->role
+            ]
+         ]);
+      } catch (ValidationException $e) {
+         // Return validation errors
+         $errors = [];
+         foreach ($e->getViolations () as $violation) {
+            $field = $violation->getPropertyPath ();
+            $errors [$field] [] = $violation->getMessage ();
+         }
+
+         return $this->response
+            ->status (422)
+            ->json ([
+               'message' => 'Validation failed',
+               'errors' => $errors
+            ]);
+      }
    }
 
    public function html ()
    {
-      $html = <<<'HTML'
+      $title = __ ('examples.html.title');
+      $loginHeading = __ ('examples.html.login_heading');
+      $logoutHeading = __ ('examples.html.logout_heading');
+      $emailLabel = __ ('examples.html.email_label');
+      $passwordLabel = __ ('examples.html.password_label');
+      $loginButton = __ ('examples.html.login_button');
+      $logoutButton = __ ('examples.html.logout_button');
+      $testCredentials = __ ('examples.html.test_credentials');
+
+      $html = <<<HTML
          <!DOCTYPE html>
          <html>
          <head>
-            <title>Cookie Authentication</title>
+            <title>{$title}</title>
          </head>
          <body>
-            <h1>Login</h1>
+            <h1>{$loginHeading}</h1>
             <form method="POST" action="/v1/gateway/cookie/login">
-               <label>Email: <input type="email" name="email" required /></label><br />
-               <label>Password: <input type="password" name="password" required /></label><br />
-               <button type="submit">Login</button>
+               <label>{$emailLabel} <input type="email" name="email" required /></label><br />
+               <label>{$passwordLabel} <input type="password" name="password" required /></label><br />
+               <button type="submit">{$loginButton}</button>
             </form>
 
-            <p>Test: user@example.com / secret or admin@example.com / secret</p>
+            <p>{$testCredentials}</p>
 
             <hr />
 
-            <h1>Logout</h1>
+            <h1>{$logoutHeading}</h1>
             <form method="POST" action="/v1/gateway/cookie/logout">
-               <button type="submit">Logout</button>
+               <button type="submit">{$logoutButton}</button>
             </form>
          </body>
          </html>
@@ -60,7 +104,7 @@ class ExamplesController
 
    public function redirect ()
    {
-      return $this->response->redirect ('/v1/heroes', 302);
+      return $this->response->redirect ('/v1/health-check', 302);
    }
 
    public function form ()
@@ -69,7 +113,7 @@ class ExamplesController
       $email = $this->request->input ('email');
 
       return $this->response->json ([
-         'message' => 'Form submitted successfully (CSRF validated)',
+         'message' => __ ('examples.form_submitted'),
          'data' => [
             'name' => $name,
             'email' => $email
@@ -79,12 +123,12 @@ class ExamplesController
 
    public function text ()
    {
-      $text = "Wisp Framework - Plain Text Response\n\n";
-      $text .= "This is a plain text response generated using \$response->text()\n\n";
-      $text .= "Features:\n";
-      $text .= "- Clean API\n";
-      $text .= "- Fast routing\n";
-      $text .= "- Powerful middleware\n";
+      $text = __ ('examples.text.title') . "\n\n";
+      $text .= __ ('examples.text.description') . "\n\n";
+      $text .= __ ('examples.text.features_title') . "\n";
+      $text .= "- " . __ ('examples.text.feature_clean_api') . "\n";
+      $text .= "- " . __ ('examples.text.feature_fast_routing') . "\n";
+      $text .= "- " . __ ('examples.text.feature_powerful_middleware') . "\n";
 
       return $this->response->text ($text);
    }

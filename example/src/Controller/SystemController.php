@@ -18,12 +18,12 @@ class SystemController
 
    public function healthCheck ()
    {
-      $this->logger->info ('Health check endpoint accessed');
+      $this->logger->info (__ ('health.check_accessed'));
 
       return $this->response
          ->status (200)
          ->json ([
-            'status' => 'ok',
+            'status' => __ ('system.status'),
             'timestamp' => time ()
          ]);
    }

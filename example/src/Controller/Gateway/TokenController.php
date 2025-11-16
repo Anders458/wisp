@@ -32,7 +32,7 @@ class TokenController
       if (!$user || !$this->passwordHasher->verify ($user->getPassword (), $password)) {
          return $this->response
             ->status (401)
-            ->error ('Invalid credentials');
+            ->error (__ ('gateway.invalid_credentials'));
       }
 
       if ($this->passwordHasher->needsRehash ($user->getPassword ())) {
@@ -46,7 +46,7 @@ class TokenController
 
       $tokens = $this->accessTokenProvider->become (
          userId: $user->getId (),
-         role: $user->getRole (),
+         roles: $user->getRoles (),
          permissions: $user->getPermissions ()
       );
 
@@ -62,7 +62,7 @@ class TokenController
       if (!$tokens) {
          return $this->response
             ->status (401)
-            ->error ('Invalid refresh token');
+            ->error (__ ('gateway.invalid_refresh_token'));
       }
 
       return $this->response->json ($tokens);
@@ -75,7 +75,7 @@ class TokenController
       if (!$accessToken) {
          return $this->response
             ->status (401)
-            ->error ('Authorization header required');
+            ->error (__ ('gateway.authorization_required'));
       }
 
       $revoked = $this->accessTokenProvider->revoke ($accessToken);
@@ -83,7 +83,7 @@ class TokenController
       if (!$revoked) {
          return $this->response
             ->status (401)
-            ->error ('Invalid or expired token');
+            ->error (__ ('gateway.invalid_expired_token'));
       }
 
       return $this->response

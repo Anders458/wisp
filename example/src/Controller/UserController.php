@@ -19,9 +19,8 @@ class UserController
 
       return $this->response->json ([
          'id' => $user->getId (),
-         'role' => $user->getRole (),
-         'permissions' => $user->getPermissions (),
-         'roles' => $user->getRoles ()
+         'roles' => $user->getRoles (),
+         'permissions' => $user->getPermissions ()
       ]);
    }
 }

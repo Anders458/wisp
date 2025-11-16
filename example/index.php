@@ -8,10 +8,10 @@ use Example\Controller\UserController;
 use Example\Security\DatabaseUserProvider;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
+use Wisp\Environment\Runtime;
 use Wisp\Environment\Stage;
 use Wisp\Example\Controller\ErrorController;
 use Wisp\Example\Controller\ExamplesController;
-use Wisp\Example\Controller\HeroesController;
 use Wisp\Example\Controller\SystemController;
 use Wisp\Http\Request;
 use Wisp\Http\Response;
@@ -89,9 +89,6 @@ $app
          })
 
          ->get ('/health-check', [ SystemController::class, 'healthCheck' ])
-         ->get ('/heroes',       [ HeroesController::class, 'index' ])
-         ->post ('/heroes',      [ HeroesController::class, 'store' ])
-         ->get ('/heroes/{id}',  [ HeroesController::class, 'show' ])
 
          ->group ('/gateway', fn ($group) =>
             $group
@@ -112,13 +109,15 @@ $app
                ->post ('/form',    [ ExamplesController::class, 'form' ])
                   ->middleware (CSRF::class)
 
+               ->post ('/validation', [ ExamplesController::class, 'validation' ])
+
                ->get ('/session-test', function (SessionInterface $session) {
                   $counter = $session->get ('counter', 0);
                   $session->set ('counter', $counter + 1);
 
                   return (new Response ())->json ([
                      'counter' => $counter + 1,
-                     'message' => 'Session test endpoint - counter increments with each request'
+                     'message' => __ ('examples.session_counter_message')
                   ]);
                })
          )
@@ -127,4 +126,8 @@ $app
             ->is ('user')
    );
 
-$app->run ();
+if (!container (Runtime::class)->isCli ()) {
+   $app->run ();
+}
+
+return $app;

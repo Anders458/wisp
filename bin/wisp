@@ -7,23 +7,46 @@ use Symfony\Component\Console\Application;
 use Wisp\Console\Command\CacheClearCommand;
 use Wisp\Console\Command\DebugContainerCommand;
 use Wisp\Console\Command\RouteListCommand;
+use Wisp\Console\Command\TestCommand;
 use Wisp\Console\Command\TokenGenerateCommand;
 use Wisp\Environment\Stage;
 use Wisp\Wisp;
 
-$root = dirname (__DIR__);
+// Detect if running from a project or framework directory
+// Check for project bootstrap file: <project_root>/public/index.php
+$projectRoot = getcwd();
+$projectBootstrap = $projectRoot . '/public/index.php';
 
-$wisp = new Wisp ([
-   'root' => $root,
-   'debug' => true,
-   'stage' => Stage::development
-]);
+if (file_exists($projectBootstrap)) {
+   // Running from a project - load the project app
+   $app = require $projectBootstrap;
 
-$console = new Application ('Wisp Framework', '1.0.0');
+   if (!$app instanceof Wisp) {
+      throw new RuntimeException('public/index.php must return a Wisp instance');
+   }
 
-$console->add (new CacheClearCommand ($root));
-$console->add (new RouteListCommand ($wisp->router));
-$console->add (new DebugContainerCommand ());
-$console->add (new TokenGenerateCommand ());
+   $root = defined('ROOT') ? ROOT : $projectRoot;
+   $console = new Application('Wisp Console', '1.0.0');
 
-$console->run ();
+   // Add RouteListCommand with actual project routes
+   $console->add(new RouteListCommand($app->router));
+   $console->add(new TestCommand($app));
+} else {
+   // Running from framework directory - create minimal app
+   $root = dirname(__DIR__);
+
+   $app = new Wisp([
+      'root' => $root,
+      'debug' => true,
+      'stage' => Stage::development
+   ]);
+
+   $console = new Application('Wisp Framework', '1.0.0');
+}
+
+// Add common commands available in both modes
+$console->add(new CacheClearCommand($root));
+$console->add(new DebugContainerCommand());
+$console->add(new TokenGenerateCommand());
+
+$console->run();

@@ -136,7 +136,16 @@ class Router
          'registry' => $this->registry
       ];
 
-      file_put_contents ($cacheFile, serialize ($data));
+      // Try to serialize, but skip if closures are present (common in route definitions)
+      try {
+         file_put_contents ($cacheFile, serialize ($data));
+      } catch (\Exception $e) {
+         // Skip caching if serialization fails (e.g., due to closures)
+         // This is expected when routes use anonymous functions
+         if (file_exists ($cacheFile)) {
+            unlink ($cacheFile);
+         }
+      }
    }
 
    public function __call (string $method, array $args) : RouteGroup | Route

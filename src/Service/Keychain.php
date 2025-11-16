@@ -75,22 +75,9 @@ class Keychain implements KeychainInterface
 
    public function get (string $name) : mixed
    {
-      // Check if dot notation is used
-      if (str_contains ($name, '.')) {
-         // Split into config name and property path
-         $parts = explode ('.', $name, 2);
-         $configName = $parts [0];
-         $propertyPath = '[' . str_replace ('.', '][', $parts [1]) . ']';
+      $propertyPath = '[' . str_replace ('.', '][', $name) . ']';
 
-         if (!isset ($this->configs [$configName])) {
-            return null;
-         }
-
-         return $this->accessor->getValue ($this->configs [$configName], $propertyPath);
-      }
-
-      // Return full config array (backward compatibility)
-      return $this->configs [$name] ?? null;
+      return $this->accessor->getValue ($this->configs, $propertyPath);
    }
 
    private function mergeRecursive (array $base, array $override) : array

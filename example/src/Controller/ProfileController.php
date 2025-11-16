@@ -28,7 +28,7 @@ class ProfileController
 
       return $this->response->json ([
          'id' => $user->getUserIdentifier (),
-         'role' => $user->getRole (),
+         'roles' => $user->getRoles (),
          'permissions' => $user->getPermissions ()
       ]);
    }

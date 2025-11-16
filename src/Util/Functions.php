@@ -68,3 +68,8 @@ function sha256 (string $data) : string
 {
    return hash ('sha256', $data);
 }
+
+function __ (string $id, array $parameters = [], ?string $domain = null, ?string $locale = null) : string
+{
+   return container (\Symfony\Contracts\Translation\TranslatorInterface::class)->trans ($id, $parameters, $domain, $locale);
+}

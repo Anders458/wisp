@@ -8,7 +8,7 @@ class User implements SymfonyUserInterface
 {
    public function __construct (
       private int | string $id,
-      private string $role,
+      private array $roles,
       private array $permissions = [],
       private ?string $password = null
    )
@@ -35,14 +35,9 @@ class User implements SymfonyUserInterface
       return $this->permissions;
    }
 
-   public function getRole () : string
-   {
-      return $this->role;
-   }
-
    public function getRoles () : array
    {
-      return [strtoupper ($this->role)];
+      return array_map (fn ($role) => strtoupper ($role), $this->roles);
    }
 
    public function getUserIdentifier () : string
