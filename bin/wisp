@@ -13,8 +13,18 @@ use Wisp\Environment\Stage;
 use Wisp\Wisp;
 
 // Detect if running from a project or framework directory
-// Check for project bootstrap file: <project_root>/public/index.php
 $projectRoot = getcwd();
+$projectConsoleBootstrap = $projectRoot . '/console.php';
+
+// Check for project console.php first (preferred method)
+if (file_exists($projectConsoleBootstrap)) {
+   // Running from a project with custom console configuration
+   $console = require $projectConsoleBootstrap;
+   $console->run();
+   exit(0);
+}
+
+// Fallback: Check for project bootstrap file
 $projectBootstrap = $projectRoot . '/public/index.php';
 
 if (file_exists($projectBootstrap)) {
