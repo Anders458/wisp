@@ -12,13 +12,13 @@ use Symfony\Component\HttpFoundation\Session\SessionInterface;
 use Symfony\Component\ErrorHandler\Debug;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorage as CurrentUserStorage;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface as CurrentUserStorageInterface;
-use Symfony\Component\Security\Core\Authorization\AccessDecisionManager;
+use Symfony\Component\Security\Core\Authorization\AccessDecisionManager as VoterManager;
 use Symfony\Component\Security\Core\Authorization\AuthorizationChecker;
 use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
 use Symfony\Component\Security\Core\Authorization\Strategy\AffirmativeStrategy as AnyVoterGrantsStrategy;
 use Symfony\Component\Security\Csrf\CsrfTokenManager;
 use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
-use Symfony\Component\Security\Csrf\TokenGenerator\UriSafeTokenGenerator;
+use Symfony\Component\Security\Csrf\TokenGenerator\UriSafeTokenGenerator as CsrfTokenGenerator;
 use Symfony\Component\Security\Csrf\TokenStorage\SessionTokenStorage as CsrfSessionStorage;
 use Symfony\Component\PasswordHasher\Hasher\PasswordHasherFactory;
 use Symfony\Component\PasswordHasher\PasswordHasherInterface;
@@ -51,7 +51,10 @@ use Wisp\Listener\AuthorizationListener;
 use Wisp\Listener\ExceptionListener;
 use Wisp\Listener\MiddlewareListener;
 use Wisp\Middleware\ETag;
-use Wisp\Security\AccessTokenProvider;
+use Wisp\Security\CacheKeyValidator;
+use Wisp\Security\CacheTokenProvider;
+use Wisp\Contracts\KeyValidatorInterface;
+use Wisp\Contracts\TokenProviderInterface;
 use Wisp\Security\UserProvider\CacheUserProvider;
 use Wisp\Environment\RuntimeInterface;
 use Wisp\Service\Flash;
@@ -84,10 +87,6 @@ class Wisp
 
       $container = Container::instance ();
 
-      // ============================================================
-      // Core Framework Services
-      // ============================================================
-
       $container
          ->register (EventDispatcherInterface::class)
          ->setClass (EventDispatcher::class)
@@ -107,10 +106,6 @@ class Wisp
          ->setArgument ('$debug', $this->debug)
          ->setArgument ('$version', $version);
 
-      // ============================================================
-      // HTTP Layer
-      // ============================================================
-
       $container
          ->register (Request::class)
          ->setSynthetic (true)
@@ -125,10 +120,6 @@ class Wisp
          ->setSynthetic (true)
          ->setPublic (true);
 
-      // ============================================================
-      // Event Listeners
-      // ============================================================
-
       $container
          ->register (AuthorizationListener::class)
          ->setPublic (true)
@@ -138,10 +129,6 @@ class Wisp
          ->register (ExceptionListener::class)
          ->setPublic (true)
          ->setAutowired (true);
-
-      // ============================================================
-      // Application Services
-      // ============================================================
 
       $container
          ->register (FlashInterface::class)
@@ -156,17 +143,13 @@ class Wisp
          ->setAutowired (true)
          ->setArgument ('$path', $config);
 
-      // ============================================================
-      // Infrastructure Services
-      // ============================================================
-
       $container
          ->register (CacheItemPoolInterface::class)
          ->setClass (FilesystemAdapter::class)
          ->setArguments ([
             '$namespace' => $name,
             '$defaultLifetime' => 0,
-            '$directory' => null
+            '$directory' => $this->root . '/var/cache'
          ])
          ->setPublic (true);
 
@@ -199,18 +182,14 @@ class Wisp
          ->setFactory ([ ValidatorFactory::class, 'create' ])
          ->setPublic (true);
 
-      // ============================================================
-      // Session Services
-      // ============================================================
-
       $container
          ->register (CacheSessionStorage::class)
          ->setArguments ([
             '$cache' => new Reference (CacheItemPoolInterface::class),
-            '$ttl' => 604800, // 7 days
-            '$name' => 'wisp_session',
-            '$secure' => false, // Set to true in production with HTTPS
-            '$sameSite' => 'lax'
+            '$ttl' => 604800,
+            '$name' => 'wisp',
+            '$secure' => true,
+            '$sameSite' => 'strict'
          ])
          ->setPublic (true);
 
@@ -222,18 +201,13 @@ class Wisp
          ])
          ->setPublic (true);
 
-      // ============================================================
-      // Security Services
-      // ============================================================
-
-      // If ANY voter grants, GRANT
       $container
          ->register (AnyVoterGrantsStrategy::class)
          ->setArgument ('$allowIfAllAbstainDecisions', false)
          ->setPublic (true);
 
       $container
-         ->register (AccessDecisionManager::class)
+         ->register (VoterManager::class)
          ->setArguments ([
             '$voters' => [
                new RoleVoter (),
@@ -248,11 +222,10 @@ class Wisp
          ->setClass (AuthorizationChecker::class)
          ->setArguments ([
             '$tokenStorage' => new Reference (CurrentUserStorageInterface::class),
-            '$accessDecisionManager' => new Reference (AccessDecisionManager::class)
+            '$accessDecisionManager' => new Reference (VoterManager::class)
          ])
          ->setPublic (true);
 
-      // CSRF Protection
       $container
          ->register (CsrfSessionStorage::class)
          ->setArguments ([
@@ -265,13 +238,12 @@ class Wisp
          ->register (CsrfTokenManagerInterface::class)
          ->setClass (CsrfTokenManager::class)
          ->setArguments ([
-            '$generator' => new UriSafeTokenGenerator (),
+            '$generator' => new CsrfTokenGenerator (),
             '$storage' => new Reference (CsrfSessionStorage::class),
             '$namespace' => null
          ])
          ->setPublic (true);
 
-      // Password Hashing
       $container
          ->register ('password_hasher.factory', PasswordHasherFactory::class)
          ->setArguments ([[
@@ -285,25 +257,26 @@ class Wisp
          ->setArguments ([ 'common' ])
          ->setPublic (true);
 
-      // Token Management
       $container
          ->register (CurrentUserStorageInterface::class)
          ->setClass (CurrentUserStorage::class)
          ->setPublic (true);
 
       $container
-         ->register (AccessTokenProvider::class)
+         ->register (TokenProviderInterface::class)
+         ->setClass (CacheTokenProvider::class)
          ->setPublic (true)
          ->setArgument ('$cache', new Reference (CacheItemPoolInterface::class));
 
-      // User Provider
+      $container
+         ->register (KeyValidatorInterface::class)
+         ->setClass (CacheKeyValidator::class)
+         ->setPublic (true)
+         ->setArgument ('$cache', new Reference (CacheItemPoolInterface::class));
+
       $container
          ->register (CacheUserProvider::class)
          ->setPublic (true);
-
-      // ============================================================
-      // Aliases (Backward Compatibility)
-      // ============================================================
 
       $container->setAlias (EventDispatcher::class, EventDispatcherInterface::class);
       $container->setAlias (Flash::class, FlashInterface::class);
@@ -321,22 +294,16 @@ class Wisp
       return Container::instance ();
    }
 
-   /**
-    * Initialize the framework without running a request
-    * Used for testing and CLI commands
-    */
    public function initialize () : void
    {
       if (isset ($this->kernel)) {
-         return; // Already initialized
+         return;
       }
 
-      // Configure route caching
       $cacheDir = $this->root . '/var/cache/routes';
       $this->router->setCacheDir ($cacheDir);
       $this->router->setDebug ($this->debug);
 
-      // Load routes from cache if available (only in non-debug mode)
       if (!$this->debug && $this->router->isCacheValid ()) {
          $this->router->loadFromCache ();
       }
@@ -348,7 +315,6 @@ class Wisp
       $container->set (Wisp::class, $this);
       $container->set (Router::class, $this->router);
 
-      // Warm up route cache if not in debug mode
       if (!$this->debug && !$this->router->isCacheValid ()) {
          $this->router->warmup ();
       }
@@ -357,12 +323,10 @@ class Wisp
 
       $requestStack = $container->get (RequestStack::class);
 
-      // Add ExceptionListener
       $this->dispatcher->addSubscriber (
          $container->get (ExceptionListener::class)
       );
 
-      // Add AuthorizationListener
       $this->dispatcher->addSubscriber (
          $container->get (AuthorizationListener::class)
       );
@@ -394,18 +358,17 @@ class Wisp
       $container->set (HttpKernelInterface::class, $this->kernel);
    }
 
-   /**
-    * Handle a request manually
-    * Used for testing
-    */
    public function handleRequest (Request $request) : SymfonyResponse
    {
       $this->initialize ();
 
       $container = Container::instance ();
 
+      $response = new Response ();
+
       $container->set (Request::class, $request);
-      $container->set (SymfonyResponse::class, new Response ());
+      $container->set (SymfonyResponse::class, $response);
+      $container->set (Response::class, $response);
 
       $context = (new RequestContext ())
          ->fromRequest ($request);
@@ -430,7 +393,6 @@ class Wisp
       $request = Request::createFromGlobals ();
       $response = $this->handleRequest ($request);
 
-      $response = $this->kernel->handle ($request);
       $response->send ();
 
       $this->kernel->terminate ($request, $response);

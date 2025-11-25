@@ -8,21 +8,20 @@ use Wisp\Http\Request;
 use Wisp\Http\Response;
 use Wisp\Middleware\Authentication\TokenAuthentication;
 use Wisp\Middleware\Session;
-use Wisp\Security\AccessTokenProvider;
-use Wisp\Security\Contracts\UserProviderInterface;
+use Wisp\Contracts\TokenProviderInterface;
+use Wisp\Contracts\UserProviderInterface;
 
 class TokenController
 {
    public function __construct (
-      private Response $response,
       private SessionInterface $session,
-      private AccessTokenProvider $accessTokenProvider,
+      private TokenProviderInterface $tokenProvider,
       private PasswordHasherInterface $passwordHasher,
       private UserProviderInterface $userProvider,
       private TokenAuthentication $tokenAuthenticationMiddleware
    ) {}
 
-   public function login (Request $request) : Response
+   public function login (Request $request, Response $response) : Response
    {
       $email    = $request->input ('email');
       $password = $request->input ('password');
@@ -30,63 +29,63 @@ class TokenController
       $user = $this->userProvider->loadUser ($email);
 
       if (!$user || !$this->passwordHasher->verify ($user->getPassword (), $password)) {
-         return $this->response
+         return $response
             ->status (401)
             ->error (__ ('gateway.invalid_credentials'));
       }
 
       if ($this->passwordHasher->needsRehash ($user->getPassword ())) {
          $newHash = $this->passwordHasher->hash ($password);
-         
+
          // $userRepository->updatePassword (
-         //    $user->getId (), 
+         //    $user->getId (),
          //    $newHash
          // );
       }
 
-      $tokens = $this->accessTokenProvider->become (
+      $tokens = $this->tokenProvider->become (
          userId: $user->getId (),
          roles: $user->getRoles (),
          permissions: $user->getPermissions ()
       );
 
-      return $this->response->json ($tokens);
+      return $response->json ($tokens);
    }
 
-   public function refresh (Request $request) : Response
+   public function refresh (Request $request, Response $response) : Response
    {
       $refreshToken = $request->input ('refresh_token');
 
-      $tokens = $this->accessTokenProvider->refresh ($refreshToken);
+      $tokens = $this->tokenProvider->refresh ($refreshToken);
 
       if (!$tokens) {
-         return $this->response
+         return $response
             ->status (401)
             ->error (__ ('gateway.invalid_refresh_token'));
       }
 
-      return $this->response->json ($tokens);
+      return $response->json ($tokens);
    }
 
-   public function logout () : Response
+   public function logout (Request $request, Response $response) : Response
    {
       $accessToken = $this->tokenAuthenticationMiddleware->getAuthorizationToken ();
 
       if (!$accessToken) {
-         return $this->response
+         return $response
             ->status (401)
             ->error (__ ('gateway.authorization_required'));
       }
 
-      $revoked = $this->accessTokenProvider->revoke ($accessToken);
+      $revoked = $this->tokenProvider->revoke ($accessToken);
 
       if (!$revoked) {
-         return $this->response
+         return $response
             ->status (401)
             ->error (__ ('gateway.invalid_expired_token'));
       }
 
-      return $this->response
+      return $response
          ->status (200)
          ->json (null);
    }

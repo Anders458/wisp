@@ -4,7 +4,7 @@ namespace Wisp\Security\UserProvider;
 
 use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
-use Wisp\Security\Contracts\UserProviderInterface;
+use Wisp\Contracts\UserProviderInterface;
 use Wisp\Security\User;
 
 class CacheUserProvider implements UserProviderInterface
@@ -38,9 +38,6 @@ class CacheUserProvider implements UserProviderInterface
 
    public function loadUserByIdentifier (string $identifier) : ?UserInterface
    {
-      // CacheUserProvider is designed for loading users by ID (session/token restoration)
-      // For authentication by email/username, use a database-backed provider
-      // This implementation attempts to load by treating identifier as an ID
       return $this->loadUser ($identifier);
    }
 }

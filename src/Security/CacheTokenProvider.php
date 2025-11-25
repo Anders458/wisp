@@ -3,8 +3,9 @@
 namespace Wisp\Security;
 
 use Psr\Cache\CacheItemPoolInterface;
+use Wisp\Contracts\TokenProviderInterface;
 
-class AccessTokenProvider
+class CacheTokenProvider implements TokenProviderInterface
 {
    public function __construct (
       private CacheItemPoolInterface $cache,
@@ -50,6 +51,8 @@ class AccessTokenProvider
 
       $this->cache->save ($refreshItem);
 
+      $this->addToRegistry ($hashedAccessToken, $sessionData);
+
       return [
          'access_token'  => $accessToken,
          'token_type'    => 'Bearer',
@@ -71,6 +74,7 @@ class AccessTokenProvider
 
       $this->cache->deleteItem ("wisp:access:{$refreshData ['hashed_access_token']}");
       $this->cache->deleteItem ("wisp:refresh:{$hashedRefreshToken}");
+      $this->removeFromRegistry ($refreshData ['hashed_access_token']);
 
       return $this->become (
          $refreshData ['user_id'],
@@ -83,23 +87,23 @@ class AccessTokenProvider
    {
       $hashedToken = hash ('sha256', $token);
 
-      // Try as access token first
       $accessItem = $this->cache->getItem ("wisp:access:{$hashedToken}");
 
       if ($accessItem->isHit ()) {
          $sessionData = $accessItem->get ();
          $this->cache->deleteItem ("wisp:access:{$hashedToken}");
          $this->cache->deleteItem ("wisp:refresh:{$sessionData ['hashed_refresh_token']}");
+         $this->removeFromRegistry ($hashedToken);
          return true;
       }
 
-      // Try as refresh token
       $refreshItem = $this->cache->getItem ("wisp:refresh:{$hashedToken}");
 
       if ($refreshItem->isHit ()) {
          $refreshData = $refreshItem->get ();
          $this->cache->deleteItem ("wisp:access:{$refreshData ['hashed_access_token']}");
          $this->cache->deleteItem ("wisp:refresh:{$hashedToken}");
+         $this->removeFromRegistry ($refreshData ['hashed_access_token']);
          return true;
       }
 
@@ -116,5 +120,58 @@ class AccessTokenProvider
       }
 
       return $accessItem->get ();
+   }
+
+   public function list () : array
+   {
+      $registryItem = $this->cache->getItem ('wisp:token:registry');
+
+      if (!$registryItem->isHit ()) {
+         return [];
+      }
+
+      $registry = $registryItem->get () ?? [];
+      $tokens = [];
+
+      foreach ($registry as $hashedToken => $metadata) {
+         $item = $this->cache->getItem ("wisp:access:{$hashedToken}");
+
+         if ($item->isHit ()) {
+            $tokens [] = $item->get ();
+         } else {
+            $this->removeFromRegistry ($hashedToken);
+         }
+      }
+
+      return $tokens;
+   }
+
+   private function addToRegistry (string $hashedToken, array $data) : void
+   {
+      $registryItem = $this->cache->getItem ('wisp:token:registry');
+      $registry = $registryItem->isHit () ? $registryItem->get () : [];
+
+      $registry [$hashedToken] = [
+         'user_id' => $data ['user_id'],
+         'created_at' => $data ['created_at']
+      ];
+
+      $registryItem->set ($registry);
+      $this->cache->save ($registryItem);
+   }
+
+   private function removeFromRegistry (string $hashedToken) : void
+   {
+      $registryItem = $this->cache->getItem ('wisp:token:registry');
+
+      if (!$registryItem->isHit ()) {
+         return;
+      }
+
+      $registry = $registryItem->get ();
+      unset ($registry [$hashedToken]);
+
+      $registryItem->set ($registry);
+      $this->cache->save ($registryItem);
    }
 }

@@ -1,6 +1,6 @@
 <?php
 
-namespace Wisp\Security\Contracts;
+namespace Wisp\Contracts;
 
 use Symfony\Component\Security\Core\User\UserInterface;
 

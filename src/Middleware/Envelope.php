@@ -18,7 +18,7 @@ class Envelope
    {
    }
 
-   public function after (SymfonyResponse $response)
+   public function after (SymfonyResponse $response) : void
    {
       if (!$response instanceof Response) {
          return;

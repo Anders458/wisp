@@ -33,7 +33,7 @@ class AuthorizationListener implements EventSubscriberInterface
    public function __construct (
       private Router $router,
       private AuthorizationCheckerInterface $authorizationChecker,
-      private CurrentUserStorageInterface $tokenStorage
+      private CurrentUserStorageInterface $currentUserStorage
    )
    {
    }
@@ -70,8 +70,8 @@ class AuthorizationListener implements EventSubscriberInterface
          return;
       }
 
-      $isAuthenticated = $this->tokenStorage->getToken () !== null
-         && $this->tokenStorage->getToken ()->getUser () !== null;
+      $isAuthenticated = $this->currentUserStorage->getToken () !== null
+         && $this->currentUserStorage->getToken ()->getUser () !== null;
 
       // Check role requirements
       if (!empty ($route->roles)) {

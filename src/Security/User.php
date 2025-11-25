@@ -17,7 +17,6 @@ class User implements SymfonyUserInterface
 
    public function eraseCredentials () : void
    {
-      // No credentials stored in user object
    }
 
    public function getId () : int | string

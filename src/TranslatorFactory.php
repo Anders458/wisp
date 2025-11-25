@@ -13,7 +13,6 @@ class TranslatorFactory
       $translator = new Translator ($defaultLocale);
       $translator->addLoader ('yaml', new YamlFileLoader ());
 
-      // Load all available locales
       if (is_dir ($localesDir)) {
          $locales = glob ($localesDir . '/*', GLOB_ONLYDIR);
 

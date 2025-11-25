@@ -3,7 +3,6 @@
 namespace Wisp\Console\Command;
 
 use Psr\Cache\CacheItemPoolInterface;
-use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -11,7 +10,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
-use Wisp\Security\AccessTokenProvider;
+use Wisp\Security\CacheTokenProvider;
 
 #[AsCommand (
    name: 'token:generate',
@@ -23,7 +22,7 @@ class TokenGenerateCommand extends Command
    {
       $this
          ->addArgument ('user_id', InputArgument::REQUIRED, 'User ID')
-         ->addArgument ('roles', InputArgument::REQUIRED, 'User roles (comma-separated)')
+         ->addArgument ('roles', InputArgument::OPTIONAL, 'User roles (comma-separated)', '')
          ->addArgument ('permissions', InputArgument::OPTIONAL, 'Permissions (comma-separated)', '')
          ->addOption ('ttl', 't', InputOption::VALUE_OPTIONAL, 'Token TTL in seconds', 3600);
    }
@@ -37,13 +36,16 @@ class TokenGenerateCommand extends Command
       $permissionsStr = $input->getArgument ('permissions');
       $ttl = (int) $input->getOption ('ttl');
 
-      $roles = explode (',', $rolesStr);
-      $permissions = !empty ($permissionsStr)
-         ? explode (',', $permissionsStr)
+      $roles = !empty ($rolesStr)
+         ? array_map ('trim', explode (',', $rolesStr))
          : [];
 
-      $cache = new FilesystemAdapter ('wisp', 0, null);
-      $provider = new AccessTokenProvider ($cache, [
+      $permissions = !empty ($permissionsStr)
+         ? array_map ('trim', explode (',', $permissionsStr))
+         : [];
+
+      $cache = container (CacheItemPoolInterface::class);
+      $provider = new CacheTokenProvider ($cache, [
          'access' => $ttl,
          'refresh' => $ttl * 7
       ]);

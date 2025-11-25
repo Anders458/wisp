@@ -25,7 +25,7 @@ class ErrorController
 
       return $this->response
          ->status (500)
-         ->body ([
+         ->json ([
             'error' => 'Internal Server Error',
             'message' => 'An unexpected error occurred'
          ]);
@@ -40,7 +40,7 @@ class ErrorController
 
       return $this->response
          ->status (404)
-         ->body ([
+         ->json ([
             'error' => 'Not Found',
             'message' => 'The requested resource was not found'
          ]);

@@ -3,7 +3,7 @@
 namespace Example\Security;
 
 use Symfony\Component\Security\Core\User\UserInterface;
-use Wisp\Security\Contracts\UserProviderInterface;
+use Wisp\Contracts\UserProviderInterface;
 use Wisp\Security\User;
 
 class DatabaseUserProvider implements UserProviderInterface

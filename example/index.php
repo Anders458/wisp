@@ -2,12 +2,24 @@
 
 require 'vendor/autoload.php';
 
+// Detect if running in test mode
+if (!defined ('WISP_TESTING')) {
+   $isPest = str_contains ($_SERVER ['SCRIPT_FILENAME'] ?? '', 'pest');
+   if ($isPest) {
+      define ('WISP_TESTING', true);
+   }
+}
+
 use Example\Controller\Gateway\CookieController;
 use Example\Controller\Gateway\TokenController;
 use Example\Controller\UserController;
 use Example\Security\DatabaseUserProvider;
+use Psr\Cache\CacheItemPoolInterface;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\DependencyInjection\Reference;
+use Symfony\Component\HttpFoundation\Session\Session as SymfonySession;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
+use Wisp\Console\Console;
 use Wisp\Environment\Runtime;
 use Wisp\Environment\Stage;
 use Wisp\Example\Controller\ErrorController;
@@ -16,16 +28,16 @@ use Wisp\Example\Controller\SystemController;
 use Wisp\Http\Request;
 use Wisp\Http\Response;
 use Wisp\Middleware\Authentication\CookieAuthentication;
-use Wisp\Middleware\Authentication\SessionAuthentication;
 use Wisp\Middleware\Authentication\TokenAuthentication;
 use Wisp\Middleware\CORS;
 use Wisp\Middleware\CSRF;
 use Wisp\Middleware\Envelope;
 use Wisp\Middleware\Helmet;
-use Wisp\Middleware\RateLimiter;
 use Wisp\Middleware\Session;
-use Wisp\Security\Contracts\UserProviderInterface;
+use Wisp\Middleware\Throttle;
+use Wisp\Contracts\UserProviderInterface;
 use Wisp\Service\KeychainInterface;
+use Wisp\Session\CacheSessionStorage;
 use Wisp\Wisp;
 
 $app = new Wisp (
@@ -41,6 +53,25 @@ $app = new Wisp (
 Wisp::container ()
    ->register (UserProviderInterface::class)
    ->setClass (DatabaseUserProvider::class)
+   ->setPublic (true);
+
+Wisp::container ()
+   ->register (CacheSessionStorage::class)
+   ->setArguments ([
+      '$cache' => new Reference (CacheItemPoolInterface::class),
+      '$ttl' => 604800,
+      '$name' => 'wisp',
+      '$secure' => false,
+      '$sameSite' => 'lax'
+   ])
+   ->setPublic (true);
+
+Wisp::container ()
+   ->register (SessionInterface::class)
+   ->setClass (SymfonySession::class)
+   ->setArguments ([
+      '$storage' => new Reference (CacheSessionStorage::class)
+   ])
    ->setPublic (true);
 
 $app
@@ -73,14 +104,11 @@ $app
 
    ->group ('/v1', fn ($group) =>
       $group
-         ->middleware (RateLimiter::class, [
+         ->middleware (Throttle::class, [
             'limit' => 1000,
             'interval' => 10,
             'strategy' => 'sliding_window'
          ])
-
-         // Apply SessionAuthentication globally to enable session-based auth everywhere
-         ->middleware (SessionAuthentication::class)
 
          ->get ('/csrf', function (CSRF $csrf) {
             return (new Response ())->json ([
@@ -125,6 +153,19 @@ $app
          ->get ('/users/@me', [ UserController::class, 'me' ])
             ->is ('user')
    );
+
+if (container (Runtime::class)->isCli ()) {
+   $isPest = str_contains ($_SERVER ['SCRIPT_FILENAME'] ?? '', 'pest');
+
+   if (!$isPest) {
+      exit (
+         (new Console ($app, 'Wisp Console', '1.0.0'))
+            ->registerFrameworkCommands ()
+            ->discoverCommands ('Example\\Command')
+            ->run ()
+      );
+   }
+}
 
 if (!container (Runtime::class)->isCli ()) {
    $app->run ();

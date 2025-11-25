@@ -16,19 +16,18 @@ class SerializerFactory
 {
    public static function create () : SerializerInterface
    {
-      $encoders = [
-         new JsonEncoder (),
-         new XmlEncoder (),
-         new YamlEncoder (),
-         new CsvEncoder ()
-      ];
-
-      $normalizers = [
-         new DateTimeNormalizer (),
-         new ArrayDenormalizer (),
-         new ObjectNormalizer ()
-      ];
-
-      return new Serializer ($normalizers, $encoders);
+      return new Serializer (
+         [
+            new DateTimeNormalizer (),
+            new ArrayDenormalizer (),
+            new ObjectNormalizer ()
+         ],
+         [
+            new JsonEncoder (),
+            new XmlEncoder (),
+            new YamlEncoder (),
+            new CsvEncoder ()
+         ]
+      );
    }
 }

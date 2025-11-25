@@ -1,11 +1,15 @@
 {
   "autoload": {
     "psr-4": {
+      "Example\\": "src/",
       "Wisp\\Example\\": "src/"
     }
   },
   "config": {
-    "process-timeout": 0
+    "process-timeout": 0,
+    "allow-plugins": {
+      "pestphp/pest-plugin": true
+    }
   },
   "require": {
     "anders/wisp": "dev-master"
@@ -20,6 +24,15 @@
     }
   ],
   "scripts": {
-    "dev": "symfony local:server:start --port=10000"
+    "console": "@php index.php",
+    "dev": "symfony local:server:start --port=10000",
+    "test": "vendor/bin/pest"
+  },
+  "require-dev": {
+    "pestphp/pest": "^4.1",
+    "symfony/browser-kit": "^7.3",
+    "symfony/dom-crawler": "^7.3",
+    "fakerphp/faker": "^1.24",
+    "symfony/css-selector": "^7.3"
   }
 }

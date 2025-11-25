@@ -7,28 +7,26 @@ use Symfony\Component\PasswordHasher\PasswordHasherInterface;
 use Wisp\Http\Request;
 use Wisp\Http\Response;
 use Wisp\Middleware\Session;
-use Wisp\Security\Contracts\UserProviderInterface;
+use Wisp\Contracts\UserProviderInterface;
 
 class CookieController
 {
    public function __construct (
-      private Request $request,
-      private Response $response,
       private SessionInterface $session,
       private Session $sessionMiddleware,
       private PasswordHasherInterface $passwordHasher,
       private UserProviderInterface $userProvider
    ) {}
 
-   public function login () : Response
+   public function login (Request $request, Response $response) : Response
    {
-      $email    = $this->request->input ('email');
-      $password = $this->request->input ('password');
+      $email    = $request->input ('email');
+      $password = $request->input ('password');
 
       // Validate inputs
       if (!$email || !$password) {
-         return $this->response
-            ->status (400)
+         return $response
+            ->status (422)
             ->error (__ ('gateway.email_password_required'));
       }
 
@@ -36,7 +34,7 @@ class CookieController
       $user = $this->userProvider->loadUser ($email);
 
       if (!$user || !$this->passwordHasher->verify ($user->getPassword (), $password)) {
-         return $this->response
+         return $response
             ->status (401)
             ->error (__ ('gateway.invalid_credentials'));
       }
@@ -55,7 +53,7 @@ class CookieController
       // Store user ID in session
       $this->session->set ('user_id', $user->getId ());
 
-      return $this->response
+      return $response
          ->status (200)
          ->json ([
             'user' => [
@@ -66,7 +64,7 @@ class CookieController
          ]);
    }
 
-   public function logout () : Response
+   public function logout (Request $request, Response $response) : Response
    {
       // Clear user_id from session
       $this->session->remove ('user_id');
@@ -74,7 +72,7 @@ class CookieController
       // Invalidate the session
       $this->session->invalidate ();
 
-      return $this->response
+      return $response
          ->status (200)
          ->json ();
    }

@@ -9,34 +9,27 @@ use Wisp\Http\ValidationException;
 
 class ExamplesController
 {
-   public function __construct (
-      private Request $request,
-      private Response $response
-   )
-   {
-   }
-
-   public function download ()
+   public function download (Response $response)
    {
       $logFile = __DIR__ . '/../../logs/wisp.log';
 
       if (file_exists ($logFile)) {
-         return $this->response->download ($logFile, 'wisp.log');
+         return $response->download ($logFile, 'wisp.log');
       }
 
-      return $this->response
+      return $response
          ->status (404)
          ->error (__ ('examples.log_not_found'));
    }
 
-   public function validation ()
+   public function validation (Request $request, Response $response)
    {
       try {
          // Validate request using DTO
-         $dto = $this->request->validate (CreateUserRequest::class);
+         $dto = $request->validate (CreateUserRequest::class);
 
          // If validation passes, return the validated data
-         return $this->response->json ([
+         return $response->json ([
             'message' => 'User created successfully',
             'user' => [
                'email' => $dto->email,
@@ -53,7 +46,7 @@ class ExamplesController
             $errors [$field] [] = $violation->getMessage ();
          }
 
-         return $this->response
+         return $response
             ->status (422)
             ->json ([
                'message' => 'Validation failed',
@@ -62,7 +55,7 @@ class ExamplesController
       }
    }
 
-   public function html ()
+   public function html (Response $response)
    {
       $title = __ ('examples.html.title');
       $loginHeading = __ ('examples.html.login_heading');
@@ -99,20 +92,20 @@ class ExamplesController
          </html>
       HTML;
 
-      return $this->response->html ($html);
+      return $response->html ($html);
    }
 
-   public function redirect ()
+   public function redirect (Response $response)
    {
-      return $this->response->redirect ('/v1/health-check', 302);
+      return $response->redirect ('/v1/health-check', 302);
    }
 
-   public function form ()
+   public function form (Request $request, Response $response)
    {
-      $name = $this->request->input ('name');
-      $email = $this->request->input ('email');
+      $name = $request->input ('name');
+      $email = $request->input ('email');
 
-      return $this->response->json ([
+      return $response->json ([
          'message' => __ ('examples.form_submitted'),
          'data' => [
             'name' => $name,
@@ -121,7 +114,7 @@ class ExamplesController
       ]);
    }
 
-   public function text ()
+   public function text (Response $response)
    {
       $text = __ ('examples.text.title') . "\n\n";
       $text .= __ ('examples.text.description') . "\n\n";
@@ -130,6 +123,6 @@ class ExamplesController
       $text .= "- " . __ ('examples.text.feature_fast_routing') . "\n";
       $text .= "- " . __ ('examples.text.feature_powerful_middleware') . "\n";
 
-      return $this->response->text ($text);
+      return $response->text ($text);
    }
 }

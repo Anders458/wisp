@@ -3,19 +3,19 @@
 namespace Wisp\Middleware\Authentication;
 
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface as CurrentUserStorageInterface;
-use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken as AuthenticatedToken;
+use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken as UserAuthContext;
 use Wisp\Http\Request;
 use Wisp\Http\Response;
-use Wisp\Security\AccessTokenProvider;
-use Wisp\Security\Contracts\UserProviderInterface;
+use Wisp\Contracts\TokenProviderInterface;
+use Wisp\Contracts\UserProviderInterface;
 
 class TokenAuthentication
 {
    public function __construct (
       private Request $request,
       private Response $response,
-      private CurrentUserStorageInterface $tokenStorage,
-      private AccessTokenProvider $accessTokenProvider,
+      private CurrentUserStorageInterface $currentUserStorage,
+      private TokenProviderInterface $tokenProvider,
       private UserProviderInterface $userProvider,
       private string $header = 'Authorization',
       private string $scheme = 'Bearer'
@@ -23,15 +23,13 @@ class TokenAuthentication
    {
    }
 
-   public function before ()
+   public function before () : ?Response
    {
-      // If no Bearer token present, skip (don't fail - let guards handle auth requirement)
       if (! ($accessToken = $this->getAuthorizationToken ())) {
-         return;
+         return null;
       }
 
-      // Only validate if Bearer token IS present
-      $sessionData = $this->accessTokenProvider->validate ($accessToken);
+      $sessionData = $this->tokenProvider->validate ($accessToken);
 
       if (!$sessionData) {
          return $this->response
@@ -47,8 +45,10 @@ class TokenAuthentication
             ->error ('User not found');
       }
 
-      $token = new AuthenticatedToken ($user, 'main', $user->getRoles ());
-      $this->tokenStorage->setToken ($token);
+      $authContext = new UserAuthContext ($user, 'main', $user->getRoles ());
+      $this->currentUserStorage->setToken ($authContext);
+
+      return null;
    }
 
    public function getAuthorizationToken () : ?string

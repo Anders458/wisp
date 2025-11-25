@@ -9,10 +9,8 @@ class Helmet
    public function __construct (
       private SymfonyResponse $response,
 
-      // Content Security Policy
       private string $csp = "default-src 'self'",
 
-      // HTTP Strict Transport Security
       private int $hstsMaxAge = 31536000,
 
       private string $frameOptions = 'DENY',
@@ -21,7 +19,7 @@ class Helmet
    {
    }
 
-   public function before ()
+   public function before () : void
    {
       $this->response->headers->set ('X-Frame-Options', $this->frameOptions);
       $this->response->headers->set ('X-Content-Type-Options', 'nosniff');

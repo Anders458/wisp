@@ -17,7 +17,6 @@ class CacheSessionStorage extends NativeSessionStorage
       ?MetadataBag $metaBag = null
    )
    {
-      // Use NativeSessionStorage with custom handler
       $handler = new CacheSessionHandler ($cache, $ttl);
 
       parent::__construct (
@@ -29,7 +28,7 @@ class CacheSessionStorage extends NativeSessionStorage
             'cookie_httponly' => true,
             'cookie_samesite' => $sameSite,
             'gc_maxlifetime' => $ttl,
-            'use_cookies' => 1,           // Let PHP handle cookie automatically
+            'use_cookies' => 1,
          ],
          $handler,
          $metaBag

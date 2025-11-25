@@ -8,7 +8,7 @@ use Wisp\Http\Response;
 class ProfileController
 {
    public function __construct (
-      private CurrentUserStorageInterface $tokenStorage,
+      private CurrentUserStorageInterface $currentUserStorage,
       private Response $response
    ) {}
 
@@ -18,7 +18,7 @@ class ProfileController
     */
    public function show () : Response
    {
-      $user = $this->tokenStorage->getToken ()?->getUser ();
+      $user = $this->currentUserStorage->getToken ()?->getUser ();
 
       if (!$user) {
          return $this->response

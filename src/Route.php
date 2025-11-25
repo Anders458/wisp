@@ -18,8 +18,6 @@ class Route
       private string $path,
       private array | Closure $action
    ) {
-      // Generate unique name by combining methods and full path
-      // E.g., "GET|/v1/heroes" or "POST|/v1/heroes" or "GET|POST|/v1/heroes"
       $methodString = implode ('|', $this->methods);
       $fullPath = $this->buildFullPath ();
       $this->name = $methodString . '|' . $fullPath;
@@ -83,7 +81,6 @@ class Route
       $pipes = [];
       $pipes [] = $this->{$hook->value};
 
-      // Collect from parent hierarchy
       $current = $this->parent;
 
       while ($current) {
@@ -102,7 +99,6 @@ class Route
 
       $handlers = array_merge (... $pipes);
 
-      // Stable sort by priority (higher priority first)
       usort ($handlers, fn ($a, $b) => $b->priority->value <=> $a->priority->value);
 
       return $handlers;

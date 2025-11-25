@@ -4,14 +4,14 @@ namespace Wisp\Middleware\Authentication;
 
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface as CurrentUserStorageInterface;
-use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken as AuthenticatedToken;
-use Wisp\Security\Contracts\UserProviderInterface;
+use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken as UserAuthContext;
+use Wisp\Contracts\UserProviderInterface;
 
 class CookieAuthentication
 {
    public function __construct (
       private SessionInterface $session,
-      private CurrentUserStorageInterface $tokenStorage,
+      private CurrentUserStorageInterface $currentUserStorage,
       private UserProviderInterface $userProvider
    )
    {
@@ -36,7 +36,7 @@ class CookieAuthentication
       }
 
       // Create authentication token and store it
-      $token = new AuthenticatedToken ($user, 'main', $user->getRoles ());
-      $this->tokenStorage->setToken ($token);
+      $authContext = new UserAuthContext ($user, 'main', $user->getRoles ());
+      $this->currentUserStorage->setToken ($authContext);
    }
 }

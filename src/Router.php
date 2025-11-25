@@ -27,7 +27,6 @@ class Router
 
       $action = $route->getAction ();
 
-      // If action is [ClassName::class, 'method'], register the controller in container
       if (is_array ($action)) {
          Container::instance ()
             ->register ($action [0])
@@ -35,7 +34,6 @@ class Router
             ->setPublic (true);
       }
 
-      // Create Symfony route
       $symfonyRoute = new SymfonyRoute (
          $fullPath,
          [
@@ -48,11 +46,9 @@ class Router
          $route->getMethods ()
       );
 
-      // Add to Symfony RouteCollection
       $name = $route->getName ();
       $this->routes->add ($name, $symfonyRoute);
 
-      // Register in our internal registry
       $this->registry [$name] = $route;
 
       return $this;
@@ -103,8 +99,21 @@ class Router
          return;
       }
 
-      $data = unserialize (file_get_contents ($cacheFile));
-      $this->routes = $data ['routes'];
+      $data = json_decode (file_get_contents ($cacheFile), true);
+
+      $this->routes = new RouteCollection ();
+      foreach ($data ['routes'] as $name => $routeData) {
+         $this->routes->add ($name, new SymfonyRoute (
+            $routeData ['path'],
+            $routeData ['defaults'],
+            $routeData ['requirements'],
+            $routeData ['options'],
+            $routeData ['host'],
+            $routeData ['schemes'],
+            $routeData ['methods']
+         ));
+      }
+
       $this->registry = $data ['registry'];
    }
 
@@ -131,17 +140,28 @@ class Router
       }
 
       $cacheFile = $this->getCacheFile ();
+
+      $routesData = [];
+      foreach ($this->routes->all () as $name => $route) {
+         $routesData [$name] = [
+            'path' => $route->getPath (),
+            'defaults' => $route->getDefaults (),
+            'requirements' => $route->getRequirements (),
+            'options' => $route->getOptions (),
+            'host' => $route->getHost (),
+            'schemes' => $route->getSchemes (),
+            'methods' => $route->getMethods ()
+         ];
+      }
+
       $data = [
-         'routes' => $this->routes,
+         'routes' => $routesData,
          'registry' => $this->registry
       ];
 
-      // Try to serialize, but skip if closures are present (common in route definitions)
       try {
-         file_put_contents ($cacheFile, serialize ($data));
+         file_put_contents ($cacheFile, json_encode ($data, JSON_PRETTY_PRINT));
       } catch (\Exception $e) {
-         // Skip caching if serialization fails (e.g., due to closures)
-         // This is expected when routes use anonymous functions
          if (file_exists ($cacheFile)) {
             unlink ($cacheFile);
          }

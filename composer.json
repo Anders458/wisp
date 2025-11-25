@@ -6,8 +6,7 @@
   "license": "MIT",
   "autoload": {
     "psr-4": {
-      "Wisp\\": "src/",
-      "Example\\": "example/src/"
+      "Wisp\\": "src/"
     },
     "files": [
       "src/Util/Functions.php"
@@ -15,7 +14,6 @@
   },
   "require": {
     "php": "^8.4",
-    "league/oauth2-client": "^2.8",
     "monolog/monolog": "^3.0",
     "psr/log": "^3.0",
     "symfony/cache": "^7.0",
@@ -40,6 +38,18 @@
     "symfony/yaml": "^7.3"
   },
   "require-dev": {
-    "symfony/var-dumper": "^7.3"
+    "symfony/var-dumper": "^7.3",
+    "fakerphp/faker": "^1.24",
+    "pestphp/pest": "^4.1",
+    "symfony/browser-kit": "^7.3",
+    "symfony/dom-crawler": "^7.3"
+  },
+  "config": {
+    "allow-plugins": {
+      "pestphp/pest-plugin": true
+    }
+  },
+  "scripts": {
+    "console": "@php example/index.php"
   }
 }
