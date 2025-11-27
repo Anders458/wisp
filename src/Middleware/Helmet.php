@@ -23,7 +23,6 @@ class Helmet
    {
       $this->response->headers->set ('X-Frame-Options', $this->frameOptions);
       $this->response->headers->set ('X-Content-Type-Options', 'nosniff');
-      $this->response->headers->set ('X-XSS-Protection', '1; mode=block');
       $this->response->headers->set ('Referrer-Policy', $this->referrerPolicy);
 
       if (!empty ($this->csp)) {

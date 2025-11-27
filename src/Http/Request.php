@@ -27,40 +27,39 @@ class Request extends SymfonyRequest
       return $response;
    }
 
-   /**
-    * Get an input value from the request (query, body, or JSON)
-    *
-    * @param string $key The parameter name
-    * @param mixed $default Default value if not found
-    * @return mixed
-    */
    public function input (string $key, mixed $default = null) : mixed
    {
-      // Check JSON body first
-      if ($this->headers->get ('Content-Type') === 'application/json' ||
-          str_contains ($this->headers->get ('Content-Type', ''), 'application/json')) {
+      if ($this->isJson ()) {
          $data = json_decode ($this->getContent (), true);
          if (is_array ($data) && array_key_exists ($key, $data)) {
             return $data [$key];
          }
       }
 
-      // Fall back to Symfony's get() which checks request and query parameters
       return $this->get ($key, $default);
+   }
+
+   public function ip () : ?string
+   {
+      return $this->getClientIp ();
+   }
+
+   public function isJson () : bool
+   {
+      $contentType = $this->headers->get ('Content-Type', '');
+      return $contentType === 'application/json' || str_contains ($contentType, 'application/json');
+   }
+
+   public function userAgent () : ?string
+   {
+      return $this->headers->get ('User-Agent');
    }
 
    public function validate (string $dtoClass) : object
    {
-      // Get request data based on content type
       $data = $this->getRequestData ();
-
-      // Get validator from container
       $validator = Wisp::container ()->get (ValidatorInterface::class);
-
-      // Create and hydrate DTO instance
       $dto = $this->hydrateDto ($dtoClass, $data);
-
-      // Validate the DTO
       $violations = $validator->validate ($dto);
 
       if (count ($violations) > 0) {
@@ -72,14 +71,11 @@ class Request extends SymfonyRequest
 
    private function getRequestData () : array
    {
-      // Check if request is JSON
-      if ($this->headers->get ('Content-Type') === 'application/json' ||
-          str_contains ($this->headers->get ('Content-Type', ''), 'application/json')) {
+      if ($this->isJson ()) {
          $data = json_decode ($this->getContent (), true);
          return $data ?? [];
       }
 
-      // Otherwise, merge query and request parameters
       return array_merge ($this->query->all (), $this->request->all ());
    }
 

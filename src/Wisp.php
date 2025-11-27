@@ -36,7 +36,6 @@ use Symfony\Component\HttpKernel\ControllerMetadata\ArgumentMetadataFactory;
 use Symfony\Component\HttpKernel\EventListener\RouterListener;
 use Symfony\Component\HttpKernel\HttpKernel;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
-use Symfony\Component\Routing\Matcher\CompiledUrlMatcher;
 use Symfony\Component\Routing\Matcher\UrlMatcher;
 use Symfony\Component\Routing\RequestContext;
 use Symfony\Component\Serializer\SerializerInterface;
@@ -62,6 +61,7 @@ use Wisp\Service\Flash;
 use Wisp\Service\FlashInterface;
 use Wisp\Service\Keychain;
 use Wisp\Service\KeychainInterface;
+use Wisp\Routing\Router;
 
 class Wisp
 {
@@ -154,7 +154,7 @@ class Wisp
 
       $container
          ->register (LoggerInterface::class)
-         ->setFactory ([ Logger::class, 'create' ])
+         ->setFactory ([ Factory\LoggerFactory::class, 'create' ])
          ->setPublic (true)
          ->setArgument ('$path', $logs)
          ->setArgument ('$debug', $debug);
@@ -166,19 +166,19 @@ class Wisp
 
       $container
          ->register (SerializerInterface::class)
-         ->setFactory ([ SerializerFactory::class, 'create' ])
+         ->setFactory ([ Factory\SerializerFactory::class, 'create' ])
          ->setPublic (true);
 
       $container
          ->register (TranslatorInterface::class)
-         ->setFactory ([ TranslatorFactory::class, 'create' ])
+         ->setFactory ([ Factory\TranslatorFactory::class, 'create' ])
          ->setPublic (true)
          ->setArgument ('$localesDir', $root . '/i18n')
          ->setArgument ('$defaultLocale', 'en');
 
       $container
          ->register (ValidatorInterface::class)
-         ->setFactory ([ ValidatorFactory::class, 'create' ])
+         ->setFactory ([ Factory\ValidatorFactory::class, 'create' ])
          ->setPublic (true);
 
       $container
@@ -306,12 +306,6 @@ class Wisp
       $container->set (Wisp::class, $this);
       $container->set (Router::class, $this->router);
 
-      $runtime = $container->get (RuntimeInterface::class);
-
-      if (!$runtime->isDebug () && !$this->router->isCacheValid ($runtime)) {
-         $this->router->warmup ($runtime);
-      }
-
       $this->dispatcher = $container->get (EventDispatcherInterface::class);
 
       $requestStack = $container->get (RequestStack::class);
@@ -366,15 +360,7 @@ class Wisp
       $context = (new RequestContext ())
          ->fromRequest ($request);
 
-      $runtime = $container->get (RuntimeInterface::class);
-
-      if (!$runtime->isDebug () && $this->router->isCacheValid ($runtime)) {
-         $cacheFile = $runtime->getRoot () . '/var/cache/routes/routes.cache';
-         $compiledRoutes = unserialize (file_get_contents ($cacheFile));
-         $matcher = new CompiledUrlMatcher ($compiledRoutes, $context);
-      } else {
-         $matcher = new UrlMatcher ($this->router->routes, $context);
-      }
+      $matcher = new UrlMatcher ($this->router->routes, $context);
 
       $requestStack = $container->get (RequestStack::class);
       $requestStack->push ($request);

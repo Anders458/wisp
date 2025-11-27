@@ -28,18 +28,36 @@ class Response extends SymfonyResponse
       return $this;
    }
 
-   public function download (string $path, ?string $name = null) : BinaryFileResponse
+   public function download (string $path, ?string $name = null, ?string $allowedDirectory = null) : BinaryFileResponse
    {
-      if (!file_exists ($path) || !is_readable ($path)) {
+      $realPath = realpath ($path);
+
+      if ($realPath === false) {
          throw new \RuntimeException ("File not found: {$path}");
       }
-      
-      $response = new BinaryFileResponse ($path);
+
+      if (!file_exists ($realPath) || !is_readable ($realPath) || is_dir ($realPath)) {
+         throw new \RuntimeException ("File not found or not readable: {$path}");
+      }
+
+      if ($allowedDirectory !== null) {
+         $realAllowedDir = realpath ($allowedDirectory);
+
+         if ($realAllowedDir === false) {
+            throw new \RuntimeException ("Allowed directory does not exist: {$allowedDirectory}");
+         }
+
+         if (!str_starts_with ($realPath, $realAllowedDir . DIRECTORY_SEPARATOR)) {
+            throw new \RuntimeException ("Access denied: file is outside allowed directory");
+         }
+      }
+
+      $response = new BinaryFileResponse ($realPath);
       $response->setContentDisposition (
          ResponseHeaderBag::DISPOSITION_ATTACHMENT,
-         $name ?? basename ($path)
+         $name ?? basename ($realPath)
       );
-      
+
       return $response;
    }
 

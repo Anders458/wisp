@@ -1,6 +1,6 @@
 <?php
 
-namespace Wisp;
+namespace Wisp\Factory;
 
 use Symfony\Component\Translation\Loader\YamlFileLoader;
 use Symfony\Component\Translation\Translator;

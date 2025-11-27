@@ -57,7 +57,10 @@ class Envelope
 
       if (!empty ($body)) {
          $decoded = json_decode ($body, true);
-         $envelope ['body'] = $decoded ?? $body;
+
+         if (json_last_error () === JSON_ERROR_NONE) {
+            $envelope ['body'] = $decoded;
+         }
       }
 
       $response->json ($envelope);

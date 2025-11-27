@@ -12,8 +12,8 @@ use Symfony\Component\HttpKernel\KernelEvents;
 use Wisp\Http\Request;
 use Wisp\Http\Response;
 use Wisp\Pipeline\Hook;
-use Wisp\Route;
-use Wisp\Router;
+use Wisp\Routing\Route;
+use Wisp\Routing\Router;
 
 class MiddlewareListener implements EventSubscriberInterface
 {

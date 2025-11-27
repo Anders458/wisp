@@ -43,5 +43,7 @@ class KeyAuthentication
 
       $authContext = new UserAuthContext ($user, 'main', $user->getRoles ());
       $this->currentUserStorage->setToken ($authContext);
+
+      return null;
    }
 }

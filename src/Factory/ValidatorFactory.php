@@ -1,6 +1,6 @@
 <?php
 
-namespace Wisp;
+namespace Wisp\Factory;
 
 use Symfony\Component\Validator\Validation;
 use Symfony\Component\Validator\Validator\ValidatorInterface;

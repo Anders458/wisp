@@ -2,13 +2,14 @@
 
 namespace Wisp\Listener;
 
+use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface as CurrentUserStorageInterface;
 use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
 use Wisp\Http\Response;
-use Wisp\Router;
+use Wisp\Routing\Router;
 
 /**
  * AuthorizationListener
@@ -33,7 +34,8 @@ class AuthorizationListener implements EventSubscriberInterface
    public function __construct (
       private Router $router,
       private AuthorizationCheckerInterface $authorizationChecker,
-      private CurrentUserStorageInterface $currentUserStorage
+      private CurrentUserStorageInterface $currentUserStorage,
+      private LoggerInterface $logger
    )
    {
    }
@@ -76,6 +78,12 @@ class AuthorizationListener implements EventSubscriberInterface
       // Check role requirements
       if (!empty ($route->roles)) {
          if (!$isAuthenticated) {
+            $this->logger->warning ('Unauthenticated access attempt to protected route', [
+               'uri' => $request->getRequestUri (),
+               'method' => $request->getMethod (),
+               'required_roles' => $route->roles
+            ]);
+
             $event->setResponse (
                (new Response ())
                   ->status (401)
@@ -87,7 +95,7 @@ class AuthorizationListener implements EventSubscriberInterface
 
          // User must have ONE of the required roles (OR logic)
          $hasRole = false;
-         
+
          foreach ($route->roles as $role) {
             if ($this->authorizationChecker->isGranted (strtoupper ($role))) {
                $hasRole = true;
@@ -96,6 +104,14 @@ class AuthorizationListener implements EventSubscriberInterface
          }
 
          if (!$hasRole) {
+            $userId = $this->currentUserStorage->getToken ()?->getUser ()?->getId ();
+            $this->logger->warning ('Role authorization failed', [
+               'user_id' => $userId,
+               'uri' => $request->getRequestUri (),
+               'method' => $request->getMethod (),
+               'required_roles' => $route->roles
+            ]);
+
             $event->setResponse (
                (new Response ())
                   ->status (403)
@@ -108,6 +124,12 @@ class AuthorizationListener implements EventSubscriberInterface
       // Check permission requirements
       if (!empty ($route->permissions)) {
          if (!$isAuthenticated) {
+            $this->logger->warning ('Unauthenticated access attempt to protected route', [
+               'uri' => $request->getRequestUri (),
+               'method' => $request->getMethod (),
+               'required_permissions' => $route->permissions
+            ]);
+
             $event->setResponse (
                (new Response ())
                   ->status (401)
@@ -119,6 +141,14 @@ class AuthorizationListener implements EventSubscriberInterface
          // User must have ALL required permissions (AND logic)
          foreach ($route->permissions as $permission) {
             if (!$this->authorizationChecker->isGranted ($permission)) {
+               $userId = $this->currentUserStorage->getToken ()?->getUser ()?->getId ();
+               $this->logger->warning ('Permission authorization failed', [
+                  'user_id' => $userId,
+                  'uri' => $request->getRequestUri (),
+                  'method' => $request->getMethod (),
+                  'required_permissions' => $route->permissions
+               ]);
+
                $event->setResponse (
                   (new Response ())
                      ->status (403)

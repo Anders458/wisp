@@ -58,6 +58,16 @@ class WispTestCase extends AbstractBrowser
       return $this;
    }
 
+   public function assertBadRequest (): self
+   {
+      return $this->assertStatus (400);
+   }
+
+   public function assertForbidden (): self
+   {
+      return $this->assertStatus (403);
+   }
+
    public function assertOk (): self
    {
       return $this->assertStatus (200);
@@ -72,6 +82,11 @@ class WispTestCase extends AbstractBrowser
       }
 
       return $this;
+   }
+
+   public function assertUnauthorized (): self
+   {
+      return $this->assertStatus (401);
    }
 
    public function delete (string $uri, array $headers = []): self
@@ -133,5 +148,11 @@ class WispTestCase extends AbstractBrowser
       }
 
       return $data;
+   }
+
+   public function withToken (string $token): self
+   {
+      $this->setServerParameter ('HTTP_AUTHORIZATION', 'Bearer ' . $token);
+      return $this;
    }
 }

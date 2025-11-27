@@ -8,7 +8,7 @@ use Wisp\Wisp;
 
 class Console
 {
-   private Application $application;
+   public Application $application;
    private Wisp $wisp;
 
    public function __construct (Wisp $wisp, string $name = 'Wisp Console', string $version = '1.0.0')
@@ -168,7 +168,7 @@ class Console
 
             if ($typeName === Wisp::class) {
                $params [] = $this->wisp;
-            } elseif ($typeName === 'Wisp\Router') {
+            } elseif ($typeName === 'Wisp\Routing\Router') {
                $params [] = $this->wisp->router;
             } elseif ($param->getName () === 'root') {
                $params [] = getcwd ();

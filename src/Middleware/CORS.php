@@ -17,9 +17,13 @@ class CORS
          'methods' => [ 'GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS' ],
          'headers' => [ 'Content-Type', 'Authorization', 'X-Requested-With' ],
          'expose_headers' => [],
-         'credentials' => true,
+         'credentials' => false,
          'max_age' => 86400
       ], $this->config);
+
+      if (in_array ('*', $this->config ['origins']) && $this->config ['credentials']) {
+         throw new \InvalidArgumentException ('Cannot use wildcard origin (*) with credentials enabled. Either specify explicit origins or disable credentials.');
+      }
    }
 
    public function before (Request $request)

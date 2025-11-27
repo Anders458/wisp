@@ -1,8 +1,10 @@
 <?php
 
-namespace Wisp;
+namespace Wisp\Routing;
 
 use Closure;
+use Wisp\Guardable;
+use Wisp\Pipeline;
 
 class RouteGroup
 {

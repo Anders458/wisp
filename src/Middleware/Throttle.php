@@ -50,7 +50,7 @@ class Throttle
 
       $this->cache->save ($item);
 
-      $remaining = max (0, $this->limit - ($item->get () - 1));
+      $remaining = max (0, $this->limit - $item->get ());
       $this->response->headers->set ('X-RateLimit-Limit', (string) $this->limit);
       $this->response->headers->set ('X-RateLimit-Remaining', (string) $remaining);
 

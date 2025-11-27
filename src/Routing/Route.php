@@ -1,8 +1,10 @@
 <?php
 
-namespace Wisp;
+namespace Wisp\Routing;
 
 use Closure;
+use Wisp\Guardable;
+use Wisp\Pipeline;
 use Wisp\Pipeline\Hook;
 
 class Route
@@ -23,7 +25,7 @@ class Route
       $this->name = $methodString . '|' . $fullPath;
    }
 
-   private function buildFullPath () : string
+   public function buildFullPath () : string
    {
       $parts = [];
       $current = $this->parent;

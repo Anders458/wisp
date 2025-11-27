@@ -1,6 +1,6 @@
 <?php
 
-namespace Wisp;
+namespace Wisp\Routing;
 
 trait Routable
 {

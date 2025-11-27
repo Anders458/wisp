@@ -1,6 +1,6 @@
 <?php
 
-namespace Wisp;
+namespace Wisp\Factory;
 
 use Symfony\Component\Serializer\Encoder\CsvEncoder;
 use Symfony\Component\Serializer\Encoder\JsonEncoder;
