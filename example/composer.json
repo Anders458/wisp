@@ -26,7 +26,8 @@
   "scripts": {
     "console": "@php index.php",
     "dev": "symfony local:server:start --port=10000",
-    "test": "vendor/bin/pest"
+    "test": "@php index.php test:run",
+    "test:route": "@php index.php test:run"
   },
   "require-dev": {
     "pestphp/pest": "^4.1",

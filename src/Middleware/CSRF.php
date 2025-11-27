@@ -27,6 +27,13 @@ class CSRF
 
    public function before () : ?Response
    {
+      if (!$this->request->hasSession ()) {
+         throw new \LogicException (
+            'CSRF middleware requires Session middleware to be registered. ' .
+            'Add Session::class to your middleware stack before using CSRF.'
+         );
+      }
+
       if ($this->tokenStorage->getToken () !== null) {
          return null;
       }
@@ -58,6 +65,13 @@ class CSRF
 
    public function getToken () : string
    {
+      if (!$this->request->hasSession ()) {
+         throw new \LogicException (
+            'CSRF middleware requires Session middleware to be registered. ' .
+            'Add Session::class to your middleware stack before using CSRF tokens.'
+         );
+      }
+
       return $this->csrfTokenManager->getToken ($this->tokenId)->getValue ();
    }
 }

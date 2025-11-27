@@ -36,6 +36,7 @@ use Symfony\Component\HttpKernel\ControllerMetadata\ArgumentMetadataFactory;
 use Symfony\Component\HttpKernel\EventListener\RouterListener;
 use Symfony\Component\HttpKernel\HttpKernel;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
+use Symfony\Component\Routing\Matcher\CompiledUrlMatcher;
 use Symfony\Component\Routing\Matcher\UrlMatcher;
 use Symfony\Component\Routing\RequestContext;
 use Symfony\Component\Serializer\SerializerInterface;
@@ -68,20 +69,18 @@ class Wisp
    public readonly HttpKernel                $kernel;
    public readonly Router                    $router;
 
-   private string $root;
-   private bool $debug;
-
    public function __construct (array $settings = [])
    {
       $name    = $settings ['name']    ?? 'Wisp';
-      $this->root    = $settings ['root']    ?? getcwd ();
-      $config  = $settings ['config']  ?? $this->root . '/config';
-      $logs    = $settings ['logs']    ?? $this->root . '/logs';
+      $root    = $settings ['root']    ?? getcwd ();
+      $config  = $settings ['config']  ?? $root . '/config';
+      $cache   = $settings ['cache']   ?? $root . '/var/cache';
+      $logs    = $settings ['logs']    ?? $root . '/logs';
       $stage   = $settings ['stage']   ?? Stage::production;
-      $this->debug   = $settings ['debug']   ?? Stage::production !== $stage;
+      $debug   = $settings ['debug']   ?? Stage::production !== $stage;
       $version = $settings ['version'] ?? '1.0.0';
 
-      if ($this->debug) {
+      if ($debug) {
          Debug::enable ();
       }
 
@@ -101,9 +100,9 @@ class Wisp
          ->register (RuntimeInterface::class)
          ->setClass (Runtime::class)
          ->setPublic (true)
-         ->setArgument ('$root', $this->root)
+         ->setArgument ('$root', $root)
          ->setArgument ('$stage', $stage)
-         ->setArgument ('$debug', $this->debug)
+         ->setArgument ('$debug', $debug)
          ->setArgument ('$version', $version);
 
       $container
@@ -149,7 +148,7 @@ class Wisp
          ->setArguments ([
             '$namespace' => $name,
             '$defaultLifetime' => 0,
-            '$directory' => $this->root . '/var/cache'
+            '$directory' => $cache
          ])
          ->setPublic (true);
 
@@ -158,7 +157,7 @@ class Wisp
          ->setFactory ([ Logger::class, 'create' ])
          ->setPublic (true)
          ->setArgument ('$path', $logs)
-         ->setArgument ('$debug', $this->debug);
+         ->setArgument ('$debug', $debug);
 
       $container
          ->register (PropertyAccessorInterface::class)
@@ -174,7 +173,7 @@ class Wisp
          ->register (TranslatorInterface::class)
          ->setFactory ([ TranslatorFactory::class, 'create' ])
          ->setPublic (true)
-         ->setArgument ('$localesDir', $this->root . '/i18n')
+         ->setArgument ('$localesDir', $root . '/i18n')
          ->setArgument ('$defaultLocale', 'en');
 
       $container
@@ -300,14 +299,6 @@ class Wisp
          return;
       }
 
-      $cacheDir = $this->root . '/var/cache/routes';
-      $this->router->setCacheDir ($cacheDir);
-      $this->router->setDebug ($this->debug);
-
-      if (!$this->debug && $this->router->isCacheValid ()) {
-         $this->router->loadFromCache ();
-      }
-
       $container = Container::instance ();
 
       $container->compile ();
@@ -315,8 +306,10 @@ class Wisp
       $container->set (Wisp::class, $this);
       $container->set (Router::class, $this->router);
 
-      if (!$this->debug && !$this->router->isCacheValid ()) {
-         $this->router->warmup ();
+      $runtime = $container->get (RuntimeInterface::class);
+
+      if (!$runtime->isDebug () && !$this->router->isCacheValid ($runtime)) {
+         $this->router->warmup ($runtime);
       }
 
       $this->dispatcher = $container->get (EventDispatcherInterface::class);
@@ -373,7 +366,15 @@ class Wisp
       $context = (new RequestContext ())
          ->fromRequest ($request);
 
-      $matcher = new UrlMatcher ($this->router->routes, $context);
+      $runtime = $container->get (RuntimeInterface::class);
+
+      if (!$runtime->isDebug () && $this->router->isCacheValid ($runtime)) {
+         $cacheFile = $runtime->getRoot () . '/var/cache/routes/routes.cache';
+         $compiledRoutes = unserialize (file_get_contents ($cacheFile));
+         $matcher = new CompiledUrlMatcher ($compiledRoutes, $context);
+      } else {
+         $matcher = new UrlMatcher ($this->router->routes, $context);
+      }
 
       $requestStack = $container->get (RequestStack::class);
       $requestStack->push ($request);

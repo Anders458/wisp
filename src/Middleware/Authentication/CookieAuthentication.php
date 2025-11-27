@@ -19,6 +19,13 @@ class CookieAuthentication
 
    public function before () : void
    {
+      if (!$this->session->isStarted ()) {
+         throw new \LogicException (
+            'CookieAuthentication middleware requires Session middleware to be registered. ' .
+            'Add Session::class to your middleware stack before using CookieAuthentication.'
+         );
+      }
+
       // Check if user is authenticated in session
       if (!$this->session->has ('user_id')) {
          return;

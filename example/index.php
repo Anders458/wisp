@@ -106,8 +106,7 @@ $app
       $group
          ->middleware (Throttle::class, [
             'limit' => 1000,
-            'interval' => 10,
-            'strategy' => 'sliding_window'
+            'interval' => 10
          ])
 
          ->get ('/csrf', function (CSRF $csrf) {
@@ -135,8 +134,6 @@ $app
                ->get ('/html',     [ ExamplesController::class, 'html' ])
                ->get ('/text',     [ ExamplesController::class, 'text' ])
                ->post ('/form',    [ ExamplesController::class, 'form' ])
-                  ->middleware (CSRF::class)
-
                ->post ('/validation', [ ExamplesController::class, 'validation' ])
 
                ->get ('/session-test', function (SessionInterface $session) {

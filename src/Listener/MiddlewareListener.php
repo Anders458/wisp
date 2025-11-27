@@ -102,6 +102,18 @@ class MiddlewareListener implements EventSubscriberInterface
             container ()->set (SymfonyResponse::class, $result);
             $event->setResponse ($result);
          }
+      } else {
+         // No route found (404/405) - run global middleware only
+         $globalHandlers = $this->router->root->after ?? [];
+
+         if (!empty ($globalHandlers)) {
+            $result = $this->executePipeline ($globalHandlers, $request, $response);
+
+            if ($result instanceof SymfonyResponse) {
+               container ()->set (SymfonyResponse::class, $result);
+               $event->setResponse ($result);
+            }
+         }
       }
    }
 

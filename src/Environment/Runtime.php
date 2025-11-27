@@ -53,4 +53,9 @@ class Runtime implements RuntimeInterface
    {
       return $this->debug;
    }
+
+   public function getRoot (): string
+   {
+      return $this->root;
+   }
 }

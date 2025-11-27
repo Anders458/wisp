@@ -38,6 +38,7 @@ class Console
       $cache = $container->get (\Psr\Cache\CacheItemPoolInterface::class);
       $keyValidator = $container->get (\Wisp\Contracts\KeyValidatorInterface::class);
       $tokenProvider = $container->get (\Wisp\Contracts\TokenProviderInterface::class);
+      $runtime = $container->get (\Wisp\Environment\RuntimeInterface::class);
 
       $frameworkCommands = [
          new \Wisp\Console\Command\CacheClearCommand (getcwd ()),
@@ -45,10 +46,11 @@ class Console
          new \Wisp\Console\Command\KeyGenerateCommand ($keyValidator),
          new \Wisp\Console\Command\KeyListCommand ($keyValidator),
          new \Wisp\Console\Command\KeyRevokeCommand ($keyValidator),
-         new \Wisp\Console\Command\RouteCacheCommand ($this->wisp->router),
+         new \Wisp\Console\Command\RouteCacheCommand ($this->wisp->router, $runtime),
          new \Wisp\Console\Command\RouteListCommand ($this->wisp->router),
          new \Wisp\Console\Command\ServeCommand (getcwd ()),
          new \Wisp\Console\Command\TestCommand ($this->wisp, getcwd ()),
+         new \Wisp\Console\Command\TestRunCommand (getcwd ()),
          new \Wisp\Console\Command\TokenGenerateCommand (),
          new \Wisp\Console\Command\TokenListCommand ($tokenProvider),
          new \Wisp\Console\Command\TokenRevokeCommand ($tokenProvider),

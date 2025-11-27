@@ -32,50 +32,32 @@ class ExceptionListener implements EventSubscriberInterface
       $exception = $event->getThrowable ();
       $response = new Response ();
 
-      // Handle ValidationException
       if ($exception instanceof ValidationException) {
          $response = $exception->getResponse ();
          $event->setResponse ($response);
          return;
       }
 
-      // Handle Access Denied (403)
       if ($exception instanceof AccessDeniedException) {
-         $response
-            ->status (403)
-            ->json ([
-               'error' => 'Access denied',
-               'message' => $this->runtime->isDebug () ? $exception->getMessage () : 'You do not have permission to access this resource'
-            ]);
-
+         $response->headers->set ('Content-Type', 'application/json');
+         $response->status (403);
          $event->setResponse ($response);
          return;
       }
 
-      // Handle Authentication (401)
       if ($exception instanceof AuthenticationException) {
-         $response
-            ->status (401)
-            ->json ([
-               'error' => 'Unauthorized',
-               'message' => $this->runtime->isDebug () ? $exception->getMessage () : 'Authentication required'
-            ]);
-
+         $response->headers->set ('Content-Type', 'application/json');
+         $response->status (401);
          $event->setResponse ($response);
          return;
       }
 
-      // Handle HTTP exceptions
       if ($exception instanceof HttpExceptionInterface) {
          $statusCode = $exception->getStatusCode ();
          $headers = $exception->getHeaders ();
 
-         $response
-            ->status ($statusCode)
-            ->json ([
-               'error' => Response::$statusTexts [$statusCode] ?? 'Error',
-               'message' => $this->runtime->isDebug () ? $exception->getMessage () : Response::$statusTexts [$statusCode] ?? 'An error occurred'
-            ]);
+         $response->headers->set ('Content-Type', 'application/json');
+         $response->status ($statusCode);
 
          foreach ($headers as $key => $value) {
             $response->headers->set ($key, $value);
@@ -85,15 +67,8 @@ class ExceptionListener implements EventSubscriberInterface
          return;
       }
 
-      // Handle all other exceptions as 500
-      $response
-         ->status (500)
-         ->json ([
-            'error' => 'Internal Server Error',
-            'message' => $this->runtime->isDebug () ? $exception->getMessage () : 'An unexpected error occurred',
-            'trace' => $this->runtime->isDebug () ? $exception->getTraceAsString () : null
-         ]);
-
+      $response->headers->set ('Content-Type', 'application/json');
+      $response->status (500);
       $event->setResponse ($response);
    }
 }

@@ -3,8 +3,11 @@
 namespace Wisp;
 
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\Routing\Matcher\Dumper\CompiledUrlMatcherDumper;
+use Symfony\Component\Routing\RequestContext;
 use Symfony\Component\Routing\RouteCollection;
 use Symfony\Component\Routing\Route as SymfonyRoute;
+use Wisp\Environment\RuntimeInterface;
 
 class Router
 {
@@ -12,8 +15,6 @@ class Router
    public RouteCollection $routes;
 
    private array $registry = [];
-   private ?string $cacheDir = null;
-   private bool $debug = false;
 
    public function __construct ()
    {
@@ -77,104 +78,40 @@ class Router
       return implode ('', $parts);
    }
 
-   public function isCacheValid () : bool
+   public function isCacheValid (RuntimeInterface $runtime) : bool
    {
-      if ($this->debug || !$this->cacheDir) {
-         return false;
-      }
-
-      $cacheFile = $this->getCacheFile ();
+      $cacheFile = $runtime->getRoot () . '/var/cache/routes/routes.cache';
       return file_exists ($cacheFile);
    }
 
-   public function loadFromCache () : void
+   public function warmup (RuntimeInterface $runtime) : void
    {
-      if (!$this->cacheDir) {
-         return;
+      return;
+      
+      $cacheDir = $runtime->getRoot () . '/var/cache/routes';
+      $cacheFile = $cacheDir . '/routes.cache';
+
+      if (!is_dir ($cacheDir)) {
+         mkdir ($cacheDir, 0755, true);
       }
 
-      $cacheFile = $this->getCacheFile ();
-
-      if (!file_exists ($cacheFile)) {
-         return;
-      }
-
-      $data = json_decode (file_get_contents ($cacheFile), true);
-
-      $this->routes = new RouteCollection ();
-      foreach ($data ['routes'] as $name => $routeData) {
-         $this->routes->add ($name, new SymfonyRoute (
-            $routeData ['path'],
-            $routeData ['defaults'],
-            $routeData ['requirements'],
-            $routeData ['options'],
-            $routeData ['host'],
-            $routeData ['schemes'],
-            $routeData ['methods']
-         ));
-      }
-
-      $this->registry = $data ['registry'];
-   }
-
-   public function setCacheDir (string $dir) : self
-   {
-      $this->cacheDir = $dir;
-      return $this;
-   }
-
-   public function setDebug (bool $debug) : self
-   {
-      $this->debug = $debug;
-      return $this;
-   }
-
-   public function warmup () : void
-   {
-      if ($this->debug || !$this->cacheDir) {
-         return;
-      }
-
-      if (!is_dir ($this->cacheDir)) {
-         mkdir ($this->cacheDir, 0755, true);
-      }
-
-      $cacheFile = $this->getCacheFile ();
-
-      $routesData = [];
-      foreach ($this->routes->all () as $name => $route) {
-         $routesData [$name] = [
-            'path' => $route->getPath (),
-            'defaults' => $route->getDefaults (),
-            'requirements' => $route->getRequirements (),
-            'options' => $route->getOptions (),
-            'host' => $route->getHost (),
-            'schemes' => $route->getSchemes (),
-            'methods' => $route->getMethods ()
-         ];
-      }
-
-      $data = [
-         'routes' => $routesData,
-         'registry' => $this->registry
-      ];
-
-      try {
-         file_put_contents ($cacheFile, json_encode ($data, JSON_PRETTY_PRINT));
-      } catch (\Exception $e) {
-         if (file_exists ($cacheFile)) {
-            unlink ($cacheFile);
+      // Check if any route uses a closure (not serializable)
+      foreach ($this->routes->all () as $route) {
+         $controller = $route->getDefault ('_controller');
+         if ($controller instanceof \Closure) {
+            // Cannot cache routes with closures
+            return;
          }
       }
+
+      $dumper = new CompiledUrlMatcherDumper ($this->routes);
+      $compiledRoutes = $dumper->getCompiledRoutes ();
+
+      file_put_contents ($cacheFile, serialize ($compiledRoutes), LOCK_EX);
    }
 
    public function __call (string $method, array $args) : RouteGroup | Route
    {
       return $this->root->$method (... $args);
-   }
-
-   private function getCacheFile () : string
-   {
-      return $this->cacheDir . '/routes.cache';
    }
 }

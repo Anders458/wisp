@@ -16,7 +16,7 @@ class ETag
 
    public function after () : void
    {
-      if (! ($etag = $this->request->headers->get ('ETag'))) {
+      if (! ($etag = $this->response->headers->get ('ETag'))) {
          return;
       }
 

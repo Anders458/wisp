@@ -14,8 +14,7 @@ class Throttle
       private Response $response,
 
       private int $limit  = 60,
-      private int $interval = 60,
-      private string $strategy = 'fixed_window'
+      private int $interval = 60
    )
    {
    }
