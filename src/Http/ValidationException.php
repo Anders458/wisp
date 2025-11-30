@@ -12,7 +12,7 @@ class ValidationException extends Exception
       public readonly ConstraintViolationListInterface $violations
    )
    {
-      parent::__construct ('Validation failed', 422);
+      parent::__construct ('Validation failed', 400);
    }
 
    public function getResponse () : Response
@@ -28,7 +28,7 @@ class ValidationException extends Exception
       }
 
       return $response
-         ->status (422)
+         ->status (400)
          ->json (null);
    }
 

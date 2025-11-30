@@ -5,6 +5,7 @@ use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
 use Wisp\Container;
+use Wisp\Exception\ServiceResolutionException;
 
 function container (?string $service = null) : mixed
 {
@@ -48,18 +49,18 @@ function session () : SessionInterface
 function defer (array $callable) : Closure
 {
    if (!class_exists ($callable [0])) {
-      throw new Exception ('Deferred callable resolution must be a [ FQCN, method ] tuple');
+      throw ServiceResolutionException::classNotFound ($callable [0]);
    }
 
    return function () use ($callable) {
       $instance = container ()->get ($callable [0]);
 
       if (!method_exists ($instance, $callable [1])) {
-         throw new Exception ('Method ' . $callable [1] . ' does not exist on ' . $callable [0]);
+         throw ServiceResolutionException::methodNotFound ($callable [0], $callable [1]);
       }
 
       $method = $callable [1];
-      
+
       return Closure::fromCallable ([ $instance, $method ]);
    };
 }

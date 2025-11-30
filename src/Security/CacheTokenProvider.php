@@ -7,6 +7,8 @@ use Wisp\Contracts\TokenProviderInterface;
 
 class CacheTokenProvider implements TokenProviderInterface
 {
+   use CacheRegistry;
+
    public function __construct (
       private CacheItemPoolInterface $cache,
       private array $ttl = [
@@ -15,6 +17,16 @@ class CacheTokenProvider implements TokenProviderInterface
       ]
    )
    {
+   }
+
+   protected function getRegistryKey () : string
+   {
+      return 'wisp:token:registry';
+   }
+
+   protected function getItemCacheKey (string $hashedKey) : string
+   {
+      return "wisp:access:{$hashedKey}";
    }
 
    public function become (int | string $userId, array $roles, array $permissions) : array
@@ -51,7 +63,7 @@ class CacheTokenProvider implements TokenProviderInterface
 
       $this->cache->save ($refreshItem);
 
-      $this->addToRegistry ($hashedAccessToken, $sessionData);
+      $this->addToRegistry ($this->cache, $hashedAccessToken, $sessionData);
 
       return [
          'access_token'  => $accessToken,
@@ -74,7 +86,7 @@ class CacheTokenProvider implements TokenProviderInterface
 
       $this->cache->deleteItem ("wisp:access:{$refreshData ['hashed_access_token']}");
       $this->cache->deleteItem ("wisp:refresh:{$hashedRefreshToken}");
-      $this->removeFromRegistry ($refreshData ['hashed_access_token']);
+      $this->removeFromRegistry ($this->cache, $refreshData ['hashed_access_token']);
 
       return $this->become (
          $refreshData ['user_id'],
@@ -93,7 +105,7 @@ class CacheTokenProvider implements TokenProviderInterface
          $sessionData = $accessItem->get ();
          $this->cache->deleteItem ("wisp:access:{$hashedToken}");
          $this->cache->deleteItem ("wisp:refresh:{$sessionData ['hashed_refresh_token']}");
-         $this->removeFromRegistry ($hashedToken);
+         $this->removeFromRegistry ($this->cache, $hashedToken);
          return true;
       }
 
@@ -103,7 +115,7 @@ class CacheTokenProvider implements TokenProviderInterface
          $refreshData = $refreshItem->get ();
          $this->cache->deleteItem ("wisp:access:{$refreshData ['hashed_access_token']}");
          $this->cache->deleteItem ("wisp:refresh:{$hashedToken}");
-         $this->removeFromRegistry ($refreshData ['hashed_access_token']);
+         $this->removeFromRegistry ($this->cache, $refreshData ['hashed_access_token']);
          return true;
       }
 
@@ -124,13 +136,7 @@ class CacheTokenProvider implements TokenProviderInterface
 
    public function list () : array
    {
-      $registryItem = $this->cache->getItem ('wisp:token:registry');
-
-      if (!$registryItem->isHit ()) {
-         return [];
-      }
-
-      $registry = $registryItem->get () ?? [];
+      $registry = $this->getRegistry ($this->cache);
       $tokens = [];
 
       foreach ($registry as $hashedToken => $metadata) {
@@ -139,39 +145,10 @@ class CacheTokenProvider implements TokenProviderInterface
          if ($item->isHit ()) {
             $tokens [] = $item->get ();
          } else {
-            $this->removeFromRegistry ($hashedToken);
+            $this->removeFromRegistry ($this->cache, $hashedToken);
          }
       }
 
       return $tokens;
-   }
-
-   private function addToRegistry (string $hashedToken, array $data) : void
-   {
-      $registryItem = $this->cache->getItem ('wisp:token:registry');
-      $registry = $registryItem->isHit () ? $registryItem->get () : [];
-
-      $registry [$hashedToken] = [
-         'user_id' => $data ['user_id'],
-         'created_at' => $data ['created_at']
-      ];
-
-      $registryItem->set ($registry);
-      $this->cache->save ($registryItem);
-   }
-
-   private function removeFromRegistry (string $hashedToken) : void
-   {
-      $registryItem = $this->cache->getItem ('wisp:token:registry');
-
-      if (!$registryItem->isHit ()) {
-         return;
-      }
-
-      $registry = $registryItem->get ();
-      unset ($registry [$hashedToken]);
-
-      $registryItem->set ($registry);
-      $this->cache->save ($registryItem);
    }
 }

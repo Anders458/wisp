@@ -14,6 +14,7 @@ use Wisp\Wisp;
 class WispTestCase extends AbstractBrowser
 {
    public Wisp|HttpKernelInterface $app;
+   private ?string $tokenHeader = null;
 
    public function __construct (Wisp|HttpKernelInterface $app)
    {
@@ -32,6 +33,12 @@ class WispTestCase extends AbstractBrowser
          $request->getServer (),
          $request->getContent ()
       );
+
+      // Add authorization header if set via withToken()
+      if ($this->tokenHeader !== null) {
+         $wispRequest->headers->set ('Authorization', $this->tokenHeader);
+         $this->tokenHeader = null; // Reset for next request
+      }
 
       if ($this->app instanceof Wisp) {
          $response = $this->app->handleRequest ($wispRequest);
@@ -152,7 +159,11 @@ class WispTestCase extends AbstractBrowser
 
    public function withToken (string $token): self
    {
-      $this->setServerParameter ('HTTP_AUTHORIZATION', 'Bearer ' . $token);
+      // Symfony's Request expects Authorization header in server params with a specific format
+      // PHP converts HTTP headers to $_SERVER with HTTP_ prefix and uppercase
+      // But Symfony's HeaderBag looks for it without HTTP_ prefix in the headers property
+      // So we need to add it directly to headers in doRequest
+      $this->tokenHeader = 'Bearer ' . $token;
       return $this;
    }
 }

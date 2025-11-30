@@ -29,7 +29,8 @@ class Router
          Container::instance ()
             ->register ($action [0])
             ->setAutowired (true)
-            ->setPublic (true);
+            ->setPublic (true)
+            ->setShared (false);
       }
 
       $symfonyRoute = new SymfonyRoute (

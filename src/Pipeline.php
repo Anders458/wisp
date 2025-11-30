@@ -26,12 +26,21 @@ trait Pipeline
 
    public function middleware (string $class, array $settings = []) : self
    {
-      $service = Container::instance ()
-         ->register ($class)
-         ->setAutowired (true)
-         ->setPublic (true);
+      $container = Container::instance ();
 
-      if (!empty ($settings)) {
+      if (!$container->hasDefinition ($class)) {
+         $service = $container
+            ->register ($class)
+            ->setAutowired (true)
+            ->setPublic (true);
+
+         if (!empty ($settings)) {
+            foreach ($settings as $key => $value) {
+               $service->setArgument ("$$key", $value);
+            }
+         }
+      } elseif (!empty ($settings)) {
+         $service = $container->getDefinition ($class);
          foreach ($settings as $key => $value) {
             $service->setArgument ("$$key", $value);
          }

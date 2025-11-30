@@ -6,10 +6,12 @@ use ReflectionClass;
 use Symfony\Component\HttpFoundation\Request as SymfonyRequest;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
+use Wisp\Exception\JsonParseException;
 use Wisp\Wisp;
 
 class Request extends SymfonyRequest
 {
+
    public function forward (array $controller, array $attributes = []) : Response
    {
       $kernel = Wisp::container ()->get (HttpKernelInterface::class);
@@ -30,9 +32,18 @@ class Request extends SymfonyRequest
    public function input (string $key, mixed $default = null) : mixed
    {
       if ($this->isJson ()) {
-         $data = json_decode ($this->getContent (), true);
-         if (is_array ($data) && array_key_exists ($key, $data)) {
-            return $data [$key];
+         $content = $this->getContent ();
+
+         if (!empty ($content)) {
+            $data = json_decode ($content, true);
+
+            if (json_last_error () !== JSON_ERROR_NONE) {
+               throw JsonParseException::fromLastError ();
+            }
+
+            if (is_array ($data) && array_key_exists ($key, $data)) {
+               return $data [$key];
+            }
          }
       }
 
@@ -72,7 +83,18 @@ class Request extends SymfonyRequest
    private function getRequestData () : array
    {
       if ($this->isJson ()) {
-         $data = json_decode ($this->getContent (), true);
+         $content = $this->getContent ();
+
+         if (empty ($content)) {
+            return [];
+         }
+
+         $data = json_decode ($content, true);
+
+         if (json_last_error () !== JSON_ERROR_NONE) {
+            throw JsonParseException::fromLastError ();
+         }
+
          return $data ?? [];
       }
 

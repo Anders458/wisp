@@ -5,14 +5,25 @@ namespace Wisp\Security;
 use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Wisp\Contracts\KeyValidatorInterface;
-use Wisp\Security\User;
 
 class CacheKeyValidator implements KeyValidatorInterface
 {
+   use CacheRegistry;
+
    public function __construct (
       private CacheItemPoolInterface $cache
    )
    {
+   }
+
+   protected function getRegistryKey () : string
+   {
+      return 'wisp:api_key:registry';
+   }
+
+   protected function getItemCacheKey (string $hashedKey) : string
+   {
+      return "wisp:api_key:{$hashedKey}";
    }
 
    public function validate (string $key) : ?UserInterface
@@ -57,7 +68,7 @@ class CacheKeyValidator implements KeyValidatorInterface
 
       $this->cache->save ($item);
 
-      $this->addToRegistry ($hashedKey, $data);
+      $this->addToRegistry ($this->cache, $hashedKey, $data);
    }
 
    public function revoke (string $key) : bool
@@ -68,7 +79,7 @@ class CacheKeyValidator implements KeyValidatorInterface
       $deleted = $this->cache->deleteItem ($cacheKey);
 
       if ($deleted) {
-         $this->removeFromRegistry ($hashedKey);
+         $this->removeFromRegistry ($this->cache, $hashedKey);
       }
 
       return $deleted;
@@ -76,13 +87,7 @@ class CacheKeyValidator implements KeyValidatorInterface
 
    public function list () : array
    {
-      $registryItem = $this->cache->getItem ('wisp:api_key:registry');
-
-      if (!$registryItem->isHit ()) {
-         return [];
-      }
-
-      $registry = $registryItem->get () ?? [];
+      $registry = $this->getRegistry ($this->cache);
       $keys = [];
 
       foreach ($registry as $hashedKey => $metadata) {
@@ -91,39 +96,10 @@ class CacheKeyValidator implements KeyValidatorInterface
          if ($item->isHit ()) {
             $keys [] = $item->get ();
          } else {
-            $this->removeFromRegistry ($hashedKey);
+            $this->removeFromRegistry ($this->cache, $hashedKey);
          }
       }
 
       return $keys;
-   }
-
-   private function addToRegistry (string $hashedKey, array $data) : void
-   {
-      $registryItem = $this->cache->getItem ('wisp:api_key:registry');
-      $registry = $registryItem->isHit () ? $registryItem->get () : [];
-
-      $registry [$hashedKey] = [
-         'user_id' => $data ['user_id'],
-         'created_at' => $data ['created_at']
-      ];
-
-      $registryItem->set ($registry);
-      $this->cache->save ($registryItem);
-   }
-
-   private function removeFromRegistry (string $hashedKey) : void
-   {
-      $registryItem = $this->cache->getItem ('wisp:api_key:registry');
-
-      if (!$registryItem->isHit ()) {
-         return;
-      }
-
-      $registry = $registryItem->get ();
-      unset ($registry [$hashedKey]);
-
-      $registryItem->set ($registry);
-      $this->cache->save ($registryItem);
    }
 }
