@@ -2,11 +2,6 @@
 
 namespace Wisp\Environment;
 
-use Symfony\Component\Console\Input\ArgvInput;
-use Symfony\Component\Console\Input\InputArgument;
-use Symfony\Component\Console\Input\InputDefinition;
-use Symfony\Component\Console\Input\InputOption;
-
 class RuntimeBuilder
 {
    private string $root = '';
@@ -134,39 +129,38 @@ class RuntimeBuilder
 
    private function parseStageFromCli () : ?Stage
    {
-      try {
-         $definition = new InputDefinition ([
-            new InputArgument ('command', InputArgument::OPTIONAL | InputArgument::IS_ARRAY),
-            new InputOption ('stage', 's', InputOption::VALUE_REQUIRED, 'Application stage (dev/test/prod)'),
-         ]);
+      $argv = $_SERVER ['argv'] ?? [];
 
-         $input = new ArgvInput (null, $definition);
-         $stageValue = $input->getOption ('stage');
-
-         if ($stageValue === null) {
-            return null;
+      foreach ($argv as $arg) {
+         if (preg_match ('/^--stage=(.+)$/', $arg, $matches)) {
+            return Stage::tryFrom ($matches [1]);
          }
 
-         return Stage::tryFrom ($stageValue);
-      } catch (\Exception) {
-         return null;
+         if (preg_match ('/^-s(.+)$/', $arg, $matches)) {
+            return Stage::tryFrom ($matches [1]);
+         }
       }
+
+      for ($i = 0; $i < count ($argv) - 1; $i++) {
+         if ($argv [$i] === '--stage' || $argv [$i] === '-s') {
+            return Stage::tryFrom ($argv [$i + 1]);
+         }
+      }
+
+      return null;
    }
 
    private function parseDebugFromCli () : bool
    {
-      try {
-         $definition = new InputDefinition ([
-            new InputArgument ('command', InputArgument::OPTIONAL | InputArgument::IS_ARRAY),
-            new InputOption ('debug', 'd', InputOption::VALUE_NONE, 'Enable debug mode'),
-         ]);
+      $argv = $_SERVER ['argv'] ?? [];
 
-         $input = new ArgvInput (null, $definition);
-
-         return $input->getOption ('debug');
-      } catch (\Exception) {
-         return false;
+      foreach ($argv as $arg) {
+         if ($arg === '--debug' || $arg === '-d') {
+            return true;
+         }
       }
+
+      return false;
    }
 
    private function parseDebugFromQuery () : bool
