@@ -2,6 +2,10 @@
 
 namespace Wisp\Environment;
 
+use Symfony\Component\Console\Input\ArgvInput;
+use Symfony\Component\Console\Input\InputDefinition;
+use Symfony\Component\Console\Input\InputOption;
+
 class RuntimeBuilder
 {
    private string $root = '';
@@ -129,38 +133,53 @@ class RuntimeBuilder
 
    private function parseStageFromCli () : ?Stage
    {
-      $argv = $_SERVER ['argv'] ?? [];
+      try {
+         $definition = new InputDefinition ([
+            new InputOption ('stage', 's', InputOption::VALUE_REQUIRED),
+         ]);
 
-      foreach ($argv as $arg) {
-         if (preg_match ('/^--stage=(.+)$/', $arg, $matches)) {
-            return Stage::tryFrom ($matches [1]);
-         }
+         $input = new ArgvInput ($this->filterArgvForOptions (), $definition);
+         $value = $input->getOption ('stage');
 
-         if (preg_match ('/^-s(.+)$/', $arg, $matches)) {
-            return Stage::tryFrom ($matches [1]);
-         }
+         return $value !== null ? Stage::tryFrom ($value) : null;
+      } catch (\Exception) {
+         return null;
       }
-
-      for ($i = 0; $i < count ($argv) - 1; $i++) {
-         if ($argv [$i] === '--stage' || $argv [$i] === '-s') {
-            return Stage::tryFrom ($argv [$i + 1]);
-         }
-      }
-
-      return null;
    }
 
    private function parseDebugFromCli () : bool
    {
-      $argv = $_SERVER ['argv'] ?? [];
+      try {
+         $definition = new InputDefinition ([
+            new InputOption ('debug', 'd', InputOption::VALUE_NONE),
+         ]);
 
-      foreach ($argv as $arg) {
-         if ($arg === '--debug' || $arg === '-d') {
-            return true;
+         $input = new ArgvInput ($this->filterArgvForOptions (), $definition);
+
+         return $input->getOption ('debug');
+      } catch (\Exception) {
+         return false;
+      }
+   }
+
+   private function filterArgvForOptions () : array
+   {
+      $argv = $_SERVER ['argv'] ?? [];
+      $filtered = [ $argv [0] ?? 'cli' ];
+
+      for ($i = 1; $i < count ($argv); $i++) {
+         $arg = $argv [$i];
+
+         if (str_starts_with ($arg, '-')) {
+            $filtered [] = $arg;
+
+            if (!str_contains ($arg, '=') && isset ($argv [$i + 1]) && !str_starts_with ($argv [$i + 1], '-')) {
+               $filtered [] = $argv [++$i];
+            }
          }
       }
 
-      return false;
+      return $filtered;
    }
 
    private function parseDebugFromQuery () : bool
