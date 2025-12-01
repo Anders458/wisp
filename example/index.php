@@ -2,14 +2,6 @@
 
 require 'vendor/autoload.php';
 
-// Detect if running in test mode
-if (!defined ('WISP_TESTING')) {
-   $isPest = str_contains ($_SERVER ['SCRIPT_FILENAME'] ?? '', 'pest');
-   if ($isPest) {
-      define ('WISP_TESTING', true);
-   }
-}
-
 use Example\Controller\Gateway\CookieController;
 use Example\Controller\Gateway\TokenController;
 use Example\Controller\UserController;
@@ -40,15 +32,20 @@ use Wisp\Service\KeychainInterface;
 use Wisp\Session\CacheSessionStorage;
 use Wisp\Wisp;
 
-$app = new Wisp (
-   [
-      'name'    => 'Wisp',
-      'root'    => __DIR__,
-      'debug'   => true,
-      'stage'   => Stage::development,
-      'version' => '1.0.0',
-   ]
-);
+$runtime = Runtime::configure ()
+   ->root (__DIR__)
+   ->version ('1.0.0')
+   ->stage (Stage::development)
+   ->debug (true)
+   ->detectStageFromCli ()
+   ->detectDebugFromCli ()
+   ->allowDebugFromQuery ('secret')
+   ->allowDebugInStages ([ Stage::development, Stage::staging ])
+   ->build ();
+
+$app = new Wisp ($runtime, [
+   'name' => 'Wisp'
+]);
 
 Wisp::container ()
    ->register (UserProviderInterface::class)
@@ -151,10 +148,8 @@ $app
             ->is ('user')
    );
 
-if (container (Runtime::class)->isCli ()) {
-   $isPest = str_contains ($_SERVER ['SCRIPT_FILENAME'] ?? '', 'pest');
-
-   if (!$isPest) {
+if (realpath ($_SERVER ['SCRIPT_FILENAME'] ?? '') === realpath (__FILE__)) {
+   if ($runtime->isCli ()) {
       exit (
          (new Console ($app, 'Wisp Console', '1.0.0'))
             ->registerFrameworkCommands ()
@@ -162,9 +157,7 @@ if (container (Runtime::class)->isCli ()) {
             ->run ()
       );
    }
-}
 
-if (!container (Runtime::class)->isCli ()) {
    $app->run ();
 }
 

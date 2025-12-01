@@ -9,7 +9,12 @@ class Runtime implements RuntimeInterface
    private bool   $debug;
    private Stage  $stage;
    private string $version;
-   
+
+   public static function configure () : RuntimeBuilder
+   {
+      return new RuntimeBuilder ();
+   }
+
    public function __construct (
       string $root,
       bool $debug = false,

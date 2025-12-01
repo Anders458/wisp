@@ -44,7 +44,6 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Wisp\ArgumentResolver\ServiceValueResolver;
 use Wisp\Environment\Runtime;
-use Wisp\Environment\Stage;
 use Wisp\Http\Request;
 use Wisp\Http\Response;
 use Wisp\Listener\AuthorizationListener;
@@ -69,18 +68,16 @@ class Wisp
    public readonly HttpKernel                $kernel;
    public readonly Router                    $router;
 
-   public function __construct (array $settings = [])
+   public function __construct (Runtime $runtime, array $settings = [])
    {
-      $name    = $settings ['name']    ?? 'Wisp';
-      $root    = $settings ['root']    ?? getcwd ();
-      $config  = $settings ['config']  ?? $root . '/config';
-      $cache   = $settings ['cache']   ?? $root . '/var/cache';
-      $logs    = $settings ['logs']    ?? $root . '/logs';
-      $stage   = $settings ['stage']   ?? Stage::production;
-      $debug   = $settings ['debug']   ?? Stage::production !== $stage;
-      $version = $settings ['version'] ?? '1.0.0';
+      $root = $runtime->getRoot ();
 
-      if ($debug) {
+      $name   = $settings ['name']   ?? 'Wisp';
+      $config = $settings ['config'] ?? $root . '/config';
+      $cache  = $settings ['cache']  ?? $root . '/var/cache';
+      $logs   = $settings ['logs']   ?? $root . '/logs';
+
+      if ($runtime->isDebug ()) {
          Debug::enable ();
       }
 
@@ -101,9 +98,9 @@ class Wisp
          ->setClass (Runtime::class)
          ->setPublic (true)
          ->setArgument ('$root', $root)
-         ->setArgument ('$stage', $stage)
-         ->setArgument ('$debug', $debug)
-         ->setArgument ('$version', $version);
+         ->setArgument ('$stage', $runtime->getStage ())
+         ->setArgument ('$debug', $runtime->isDebug ())
+         ->setArgument ('$version', $runtime->getVersion ());
 
       $container
          ->register (Request::class)
@@ -157,7 +154,7 @@ class Wisp
          ->setFactory ([ Factory\LoggerFactory::class, 'create' ])
          ->setPublic (true)
          ->setArgument ('$path', $logs)
-         ->setArgument ('$debug', $debug);
+         ->setArgument ('$debug', $runtime->isDebug ());
 
       $container
          ->register (PropertyAccessorInterface::class)

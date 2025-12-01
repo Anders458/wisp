@@ -4,6 +4,7 @@ namespace Wisp\Console;
 
 use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputOption;
 use Wisp\Wisp;
 
 class Console
@@ -15,6 +16,11 @@ class Console
    {
       $this->wisp = $wisp;
       $this->application = new Application ($name, $version);
+
+      $this->application->getDefinition ()->addOptions ([
+         new InputOption ('stage', 's', InputOption::VALUE_REQUIRED, 'Application stage (dev/stg/prd)'),
+         new InputOption ('debug', 'd', InputOption::VALUE_NONE, 'Enable debug mode'),
+      ]);
    }
 
    public function discoverCommands (string ...$namespaces) : self
