@@ -3,6 +3,7 @@
 namespace Wisp\Environment;
 
 use Symfony\Component\Console\Input\ArgvInput;
+use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputDefinition;
 use Symfony\Component\Console\Input\InputOption;
 
@@ -135,7 +136,8 @@ class RuntimeBuilder
    {
       try {
          $definition = new InputDefinition ([
-            new InputOption ('stage', 's', InputOption::VALUE_REQUIRED, 'Application stage (dev/stg/prd)'),
+            new InputArgument ('command', InputArgument::OPTIONAL | InputArgument::IS_ARRAY),
+            new InputOption ('stage', 's', InputOption::VALUE_REQUIRED, 'Application stage (dev/test/prod)'),
          ]);
 
          $input = new ArgvInput (null, $definition);
@@ -155,6 +157,7 @@ class RuntimeBuilder
    {
       try {
          $definition = new InputDefinition ([
+            new InputArgument ('command', InputArgument::OPTIONAL | InputArgument::IS_ARRAY),
             new InputOption ('debug', 'd', InputOption::VALUE_NONE, 'Enable debug mode'),
          ]);
 

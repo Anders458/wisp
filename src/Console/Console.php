@@ -4,7 +4,12 @@ namespace Wisp\Console;
 
 use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\ArgvInput;
 use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\Console\Output\ConsoleOutput;
+use Symfony\Component\Console\Helper\Table;
+use Wisp\Container;
+use Wisp\Environment\RuntimeInterface;
 use Wisp\Wisp;
 
 class Console
@@ -18,7 +23,7 @@ class Console
       $this->application = new Application ($name, $version);
 
       $this->application->getDefinition ()->addOptions ([
-         new InputOption ('stage', 's', InputOption::VALUE_REQUIRED, 'Application stage (dev/stg/prd)'),
+         new InputOption ('stage', 's', InputOption::VALUE_REQUIRED, 'Application stage (dev/test/prod)'),
          new InputOption ('debug', 'd', InputOption::VALUE_NONE, 'Enable debug mode'),
       ]);
    }
@@ -71,7 +76,67 @@ class Console
 
    public function run () : int
    {
-      return $this->application->run ();
+      $input = new ArgvInput ();
+      $output = new ConsoleOutput ();
+
+      if (!$this->shouldSkipBanner ($input)) {
+         $this->printBanner ($output);
+      }
+
+      return $this->application->run ($input, $output);
+   }
+
+   private function shouldSkipBanner (ArgvInput $input) : bool
+   {
+      $command = $input->getFirstArgument ();
+
+      if ($command === null || $command === 'list') {
+         return true;
+      }
+
+      if ($input->hasParameterOption ([ '-q', '--quiet', '--silent' ])) {
+         return true;
+      }
+
+      if ($input->hasParameterOption ([ '-h', '--help' ])) {
+         return true;
+      }
+
+      if ($input->hasParameterOption ([ '-V', '--version' ])) {
+         return true;
+      }
+
+      return false;
+   }
+
+   private function printBanner (ConsoleOutput $output) : void
+   {
+      $runtime = Container::instance ()->get (RuntimeInterface::class);
+
+      $stage = $runtime->getStage ();
+      $stageColors = [
+         'dev'  => 'green',
+         'test' => 'yellow',
+         'prod' => 'red',
+      ];
+      $stageColor = $stageColors [$stage->value] ?? 'white';
+
+      $stageLabel = sprintf ('<fg=%s>%s</>', $stageColor, strtoupper ($stage->value));
+      $debugLabel = $runtime->isDebug () ? '<fg=green>ON</>' : '<fg=gray>OFF</>';
+
+      $table = new Table ($output);
+      $table->setStyle ('box');
+      $table->setHeaders ([ $this->application->getName (), '' ]);
+      $table->setRows ([
+         [ 'Version', $this->application->getVersion () ],
+         [ 'Stage', $stageLabel ],
+         [ 'Debug', $debugLabel ],
+         [ 'PHP', PHP_VERSION ],
+      ]);
+
+      $output->writeln ('');
+      $table->render ();
+      $output->writeln ('');
    }
 
    private function findCommandsInNamespace (string $namespace) : array
