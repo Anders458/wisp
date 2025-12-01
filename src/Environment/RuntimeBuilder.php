@@ -3,8 +3,6 @@
 namespace Wisp\Environment;
 
 use Symfony\Component\Console\Input\ArgvInput;
-use Symfony\Component\Console\Input\InputDefinition;
-use Symfony\Component\Console\Input\InputOption;
 
 class RuntimeBuilder
 {
@@ -133,53 +131,17 @@ class RuntimeBuilder
 
    private function parseStageFromCli () : ?Stage
    {
-      try {
-         $definition = new InputDefinition ([
-            new InputOption ('stage', 's', InputOption::VALUE_REQUIRED),
-         ]);
+      $input = new ArgvInput ();
+      $value = $input->getParameterOption ([ '--stage', '-s' ], null);
 
-         $input = new ArgvInput ($this->filterArgvForOptions (), $definition);
-         $value = $input->getOption ('stage');
-
-         return $value !== null ? Stage::tryFrom ($value) : null;
-      } catch (\Exception) {
-         return null;
-      }
+      return $value !== null ? Stage::tryFrom ($value) : null;
    }
 
    private function parseDebugFromCli () : bool
    {
-      try {
-         $definition = new InputDefinition ([
-            new InputOption ('debug', 'd', InputOption::VALUE_NONE),
-         ]);
+      $input = new ArgvInput ();
 
-         $input = new ArgvInput ($this->filterArgvForOptions (), $definition);
-
-         return $input->getOption ('debug');
-      } catch (\Exception) {
-         return false;
-      }
-   }
-
-   private function filterArgvForOptions () : array
-   {
-      $argv = $_SERVER ['argv'] ?? [];
-      $filtered = [ $argv [0] ?? 'cli' ];
-
-      for ($i = 1; $i < count ($argv); $i++) {
-         $arg = $argv [$i];
-
-         if (str_starts_with ($arg, '-')) {
-            $filtered [] = $arg;
-
-            if (!str_contains ($arg, '=') && isset ($argv [$i + 1]) && !str_starts_with ($argv [$i + 1], '-')) {
-               $filtered [] = $argv [++$i];
-            }
-         }
-      }
-
-      return $filtered;
+      return $input->hasParameterOption ([ '--debug', '-d' ]);
    }
 
    private function parseDebugFromQuery () : bool
