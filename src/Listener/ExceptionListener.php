@@ -10,6 +10,7 @@ use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
 use Wisp\Environment\RuntimeInterface;
+use Wisp\Exception\JsonParseException;
 use Wisp\Http\Response;
 use Wisp\Http\ValidationException;
 
@@ -41,6 +42,18 @@ class ExceptionListener implements EventSubscriberInterface
             'method' => $request->getMethod ()
          ]);
          $response = $exception->getResponse ();
+         $event->setResponse ($response);
+         return;
+      }
+
+      if ($exception instanceof JsonParseException) {
+         $this->logger->info ('Invalid JSON payload', [
+            'uri' => $request->getRequestUri (),
+            'method' => $request->getMethod (),
+            'message' => $exception->getMessage ()
+         ]);
+         $response->headers->set ('Content-Type', 'application/json');
+         $response->status (400)->error ($exception->getMessage ());
          $event->setResponse ($response);
          return;
       }
