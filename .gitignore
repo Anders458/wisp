@@ -1,4 +1,3 @@
-/dependents.txt
-/example/logs
-/logs
-vendor
+/vendor
+/var
+composer.lock

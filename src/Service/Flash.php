@@ -2,43 +2,101 @@
 
 namespace Wisp\Service;
 
-use Symfony\Component\HttpFoundation\Session\SessionInterface;
+use Symfony\Component\HttpFoundation\RequestStack;
 
-class Flash implements FlashInterface
+class Flash
 {
-   public array $errors = [];
-   public array $warnings = [];
+   /** @var string[] */
+   private array $errors = [];
 
-   public int $code = 0;
+   /** @var string[] */
+   private array $warnings = [];
+
+   /** @var string[] */
+   private array $info = [];
+
+   /** @var string[] */
+   private array $success = [];
+
+   private int $code = 0;
 
    public function __construct (
-      private SessionInterface $session
+      private RequestStack $requestStack
    )
    {
-      // Load current flash data from session (populate public properties for BC)
-      $this->errors = $session->get ('wisp:flash.errors', []);
-      $this->warnings = $session->get ('wisp:flash.warnings', []);
-      $this->code = $session->get ('wisp:flash.code', 0);
+      $this->loadFromSession ();
    }
 
-   public function clear () : self
+   public function error (string $message, ?int $code = null): self
    {
-      $this->errors = [];
-      $this->warnings = [];
-      $this->code = 0;
+      $this->errors [] = $message;
 
-      $this->session->remove ('wisp:flash.errors');
-      $this->session->remove ('wisp:flash.warnings');
-      $this->session->remove ('wisp:flash.code');
+      if ($code !== null && $code !== 0) {
+         $this->code |= $code;
+      }
+
+      $this->persistToSession ();
 
       return $this;
    }
 
-   public function consume () : array
+   public function warning (string $message, ?int $code = null): self
+   {
+      $this->warnings [] = $message;
+
+      if ($code !== null && $code !== 0) {
+         $this->code |= $code;
+      }
+
+      $this->persistToSession ();
+
+      return $this;
+   }
+
+   public function info (string $message): self
+   {
+      $this->info [] = $message;
+      $this->persistToSession ();
+
+      return $this;
+   }
+
+   public function success (string $message): self
+   {
+      $this->success [] = $message;
+      $this->persistToSession ();
+
+      return $this;
+   }
+
+   public function clear (): self
+   {
+      $this->errors = [];
+      $this->warnings = [];
+      $this->info = [];
+      $this->success = [];
+      $this->code = 0;
+
+      $session = $this->getSession ();
+
+      if ($session !== null) {
+         $session->remove ('wisp:flash.errors');
+         $session->remove ('wisp:flash.warnings');
+         $session->remove ('wisp:flash.info');
+         $session->remove ('wisp:flash.success');
+         $session->remove ('wisp:flash.code');
+      }
+
+      return $this;
+   }
+
+   public function consume (): array
    {
       $data = [
          'errors' => $this->errors,
          'warnings' => $this->warnings,
+         'info' => $this->info,
+         'success' => $this->success,
          'code' => $this->code
       ];
 
@@ -47,33 +105,83 @@ class Flash implements FlashInterface
       return $data;
    }
 
-   public function error (string $message, ?int $code = null) : self
+   public function hasErrors (): bool
    {
-      $this->errors [] = $message;
-
-      if ($code !== null && $code !== 0) {
-         $this->code |= $code;
-      }
-
-      // Persist to session
-      $this->session->set ('wisp:flash.errors', $this->errors);
-      $this->session->set ('wisp:flash.code', $this->code);
-
-      return $this;
+      return !empty ($this->errors);
    }
 
-   public function warning (string $message, ?int $code = null) : self
+   public function hasWarnings (): bool
    {
-      $this->warnings [] = $message;
+      return !empty ($this->warnings);
+   }
 
-      if ($code !== null && $code !== 0) {
-         $this->code |= $code;
+   public function hasMessages (): bool
+   {
+      return !empty ($this->errors)
+         || !empty ($this->warnings)
+         || !empty ($this->info)
+         || !empty ($this->success);
+   }
+
+   /**
+    * @return string[]
+    */
+   public function getErrors (): array
+   {
+      return $this->errors;
+   }
+
+   /**
+    * @return string[]
+    */
+   public function getWarnings (): array
+   {
+      return $this->warnings;
+   }
+
+   public function getCode (): int
+   {
+      return $this->code;
+   }
+
+   private function loadFromSession (): void
+   {
+      $session = $this->getSession ();
+
+      if ($session === null) {
+         return;
       }
 
-      // Persist to session
-      $this->session->set ('wisp:flash.warnings', $this->warnings);
-      $this->session->set ('wisp:flash.code', $this->code);
+      $this->errors = $session->get ('wisp:flash.errors', []);
+      $this->warnings = $session->get ('wisp:flash.warnings', []);
+      $this->info = $session->get ('wisp:flash.info', []);
+      $this->success = $session->get ('wisp:flash.success', []);
+      $this->code = $session->get ('wisp:flash.code', 0);
+   }
 
-      return $this;
+   private function persistToSession (): void
+   {
+      $session = $this->getSession ();
+
+      if ($session === null) {
+         return;
+      }
+
+      $session->set ('wisp:flash.errors', $this->errors);
+      $session->set ('wisp:flash.warnings', $this->warnings);
+      $session->set ('wisp:flash.info', $this->info);
+      $session->set ('wisp:flash.success', $this->success);
+      $session->set ('wisp:flash.code', $this->code);
+   }
+
+   private function getSession (): ?\Symfony\Component\HttpFoundation\Session\SessionInterface
+   {
+      $request = $this->requestStack->getCurrentRequest ();
+
+      if ($request === null || !$request->hasSession ()) {
+         return null;
+      }
+
+      return $request->getSession ();
    }
 }

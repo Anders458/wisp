@@ -2,34 +2,25 @@
 
 namespace Wisp\Http;
 
-use ReflectionClass;
 use Symfony\Component\HttpFoundation\Request as SymfonyRequest;
-use Symfony\Component\HttpKernel\HttpKernelInterface;
-use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Wisp\Exception\JsonParseException;
-use Wisp\Wisp;
 
 class Request extends SymfonyRequest
 {
-
-   public function forward (array $controller, array $attributes = []) : Response
+   public static function createFrom (SymfonyRequest $request): self
    {
-      $kernel = Wisp::container ()->get (HttpKernelInterface::class);
-
-      $attributes ['_controller'] = $controller;
-
-      $subRequest = $this->duplicate (
-         null,
-         null,
-         $attributes
+      return new self (
+         $request->query->all (),
+         $request->request->all (),
+         $request->attributes->all (),
+         $request->cookies->all (),
+         $request->files->all (),
+         $request->server->all (),
+         $request->getContent ()
       );
-
-      $response = $kernel->handle ($subRequest, HttpKernelInterface::SUB_REQUEST);
-
-      return $response;
    }
 
-   public function input (string $key, mixed $default = null) : mixed
+   public function input (string $key, mixed $default = null): mixed
    {
       if ($this->isJson ()) {
          $content = $this->getContent ();
@@ -50,37 +41,7 @@ class Request extends SymfonyRequest
       return $this->get ($key, $default);
    }
 
-   public function ip () : ?string
-   {
-      return $this->getClientIp ();
-   }
-
-   public function isJson () : bool
-   {
-      $contentType = $this->headers->get ('Content-Type', '');
-      return $contentType === 'application/json' || str_contains ($contentType, 'application/json');
-   }
-
-   public function userAgent () : ?string
-   {
-      return $this->headers->get ('User-Agent');
-   }
-
-   public function validate (string $dtoClass) : object
-   {
-      $data = $this->getRequestData ();
-      $validator = Wisp::container ()->get (ValidatorInterface::class);
-      $dto = $this->hydrateDto ($dtoClass, $data);
-      $violations = $validator->validate ($dto);
-
-      if (count ($violations) > 0) {
-         throw new ValidationException ($violations);
-      }
-
-      return $dto;
-   }
-
-   private function getRequestData () : array
+   public function all (): array
    {
       if ($this->isJson ()) {
          $content = $this->getContent ();
@@ -101,22 +62,51 @@ class Request extends SymfonyRequest
       return array_merge ($this->query->all (), $this->request->all ());
    }
 
-   private function hydrateDto (string $dtoClass, array $data) : object
+   public function only (array $keys): array
    {
-      $reflection = new ReflectionClass ($dtoClass);
-      $dto = $reflection->newInstance ();
+      return array_intersect_key ($this->all (), array_flip ($keys));
+   }
 
-      // Set public properties from data
-      foreach ($reflection->getProperties () as $property) {
-         if ($property->isPublic ()) {
-            $propertyName = $property->getName ();
+   public function except (array $keys): array
+   {
+      return array_diff_key ($this->all (), array_flip ($keys));
+   }
 
-            if (array_key_exists ($propertyName, $data)) {
-               $property->setValue ($dto, $data [$propertyName]);
-            }
-         }
+   public function has (string $key): bool
+   {
+      return array_key_exists ($key, $this->all ());
+   }
+
+   public function ip (): ?string
+   {
+      return $this->getClientIp ();
+   }
+
+   public function userAgent (): ?string
+   {
+      return $this->headers->get ('User-Agent');
+   }
+
+   public function isJson (): bool
+   {
+      $contentType = $this->headers->get ('Content-Type', '');
+
+      return str_contains ($contentType, 'application/json');
+   }
+
+   public function wantsJson (): bool
+   {
+      return str_contains ($this->headers->get ('Accept', ''), 'application/json');
+   }
+
+   public function bearerToken (): ?string
+   {
+      $header = $this->headers->get ('Authorization', '');
+
+      if (str_starts_with ($header, 'Bearer ')) {
+         return substr ($header, 7);
       }
 
-      return $dto;
+      return null;
    }
 }

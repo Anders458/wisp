@@ -1,55 +1,36 @@
 {
-  "name": "anders/wisp",
-  "description": "An ergonomic wrapper around Symfony for creating fast and light APIs.",
-  "type": "library",
-  "keywords": [ "microframework", "router" ],
-  "license": "MIT",
-  "autoload": {
-    "psr-4": {
-      "Wisp\\": "src/"
-    },
-    "files": [
-      "src/Util/Functions.php"
-    ]
-  },
-  "require": {
-    "php": "^8.2",
-    "monolog/monolog": "^3.0",
-    "psr/log": "^3.0",
-    "symfony/cache": "^7.0",
-    "symfony/config": "^7.0",
-    "symfony/console": "^7.0",
-    "symfony/dependency-injection": "^7.0",
-    "symfony/error-handler": "^7.3",
-    "symfony/event-dispatcher": "^7.0",
-    "symfony/http-foundation": "^7.0",
-    "symfony/http-kernel": "^7.3",
-    "symfony/property-access": "^7.0",
-    "symfony/property-info": "^7.0",
-    "symfony/rate-limiter": "^7.0",
-    "symfony/routing": "^7.0",
-    "symfony/security-bundle": "^7.3",
-    "symfony/security-core": "^7.3",
-    "symfony/security-csrf": "^7.3",
-    "symfony/security-http": "^7.3",
-    "symfony/serializer": "^7.0",
-    "symfony/translation": "^7.0",
-    "symfony/validator": "^7.0",
-    "symfony/yaml": "^7.3"
-  },
-  "require-dev": {
-    "symfony/var-dumper": "^7.3",
-    "fakerphp/faker": "^1.24",
-    "pestphp/pest": "^4.1",
-    "symfony/browser-kit": "^7.3",
-    "symfony/dom-crawler": "^7.3"
-  },
-  "config": {
-    "allow-plugins": {
-      "pestphp/pest-plugin": true
-    }
-  },
-  "scripts": {
-    "console": "@php example/index.php"
-  }
+   "name": "anders/wisp",
+   "description": "Ergonomic Symfony 8 bundle for building APIs",
+   "type": "symfony-bundle",
+   "keywords": [ "symfony", "bundle", "api" ],
+   "license": "MIT",
+   "autoload": {
+      "psr-4": {
+         "Wisp\\": "src/"
+      }
+   },
+   "require": {
+      "php": "^8.4",
+      "psr/cache": "^3.0",
+      "symfony/cache": "^8.0",
+      "symfony/config": "^8.0",
+      "symfony/console": "^8.0",
+      "symfony/dependency-injection": "^8.0",
+      "symfony/event-dispatcher": "^8.0",
+      "symfony/framework-bundle": "^8.0",
+      "symfony/http-foundation": "^8.0",
+      "symfony/http-kernel": "^8.0",
+      "symfony/rate-limiter": "^8.0",
+      "symfony/security-bundle": "^8.0",
+      "symfony/validator": "^8.0"
+   },
+   "require-dev": {
+      "phpstan/phpstan": "^2.0",
+      "symfony/browser-kit": "^8.0",
+      "symfony/dom-crawler": "^8.0",
+      "symfony/var-dumper": "^8.0"
+   },
+   "config": {
+      "sort-packages": true
+   }
 }

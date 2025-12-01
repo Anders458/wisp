@@ -2,15 +2,13 @@
 
 namespace Wisp\Exception;
 
-class JsonParseException extends \JsonException
+class JsonParseException extends \RuntimeException
 {
-   public function __construct (string $message = 'Invalid JSON payload', int $code = 0, ?\Throwable $previous = null)
+   public static function fromLastError (): self
    {
-      parent::__construct ($message, $code, $previous);
-   }
-
-   public static function fromLastError () : self
-   {
-      return new self ('Invalid JSON payload: ' . json_last_error_msg (), json_last_error ());
+      return new self (
+         'JSON parse error: ' . json_last_error_msg (),
+         json_last_error ()
+      );
    }
 }
