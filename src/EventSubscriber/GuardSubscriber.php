@@ -34,7 +34,7 @@ class GuardSubscriber implements EventSubscriberInterface
       if (is_array ($controller)) {
          [ $instance, $method ] = $controller;
          $this->checkGuards ($instance::class, $method);
-      } elseif (is_object ($controller) && method_exists ($controller, '__invoke')) {
+      } elseif (is_object ($controller) && !$controller instanceof \Closure && method_exists ($controller, '__invoke')) {
          $this->checkGuards ($controller::class, '__invoke');
       }
    }

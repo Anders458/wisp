@@ -38,7 +38,7 @@ class Request extends SymfonyRequest
          }
       }
 
-      return $this->get ($key, $default);
+      return $this->query->get ($key) ?? $this->request->get ($key, $default);
    }
 
    public function all (): array

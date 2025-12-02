@@ -9,6 +9,8 @@ use Symfony\Component\HttpKernel\Bundle\AbstractBundle;
 
 class Bundle extends AbstractBundle
 {
+   protected string $extensionAlias = 'wisp';
+
    public function configure (DefinitionConfigurator $definition): void
    {
       $definition->rootNode ()

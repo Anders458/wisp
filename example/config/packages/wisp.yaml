@@ -1,0 +1,22 @@
+wisp:
+   runtime:
+      version: '1.0.0'
+      default_stage: dev
+      default_debug: true
+      detect_stage_from_cli: true
+      detect_debug_from_cli: true
+
+   envelope:
+      enabled: true
+      include_debug_info: true
+
+   throttle:
+      enabled: true
+      limit: 60
+      interval: 60
+      strategy: ip
+
+when@test:
+   wisp:
+      throttle:
+         enabled: false

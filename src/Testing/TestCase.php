@@ -145,7 +145,7 @@ abstract class TestCase extends WebTestCase
       return $this;
    }
 
-   protected function assertJson (): static
+   protected function assertJsonResponse (): static
    {
       $content = $this->response->getContent ();
       $decoded = json_decode ($content, true);
