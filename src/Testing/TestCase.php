@@ -7,7 +7,7 @@ use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\HttpFoundation\Response;
 
-abstract class WispTestCase extends WebTestCase
+abstract class TestCase extends WebTestCase
 {
    protected ?KernelBrowser $client = null;
    protected ?Response $response = null;
