@@ -62,12 +62,13 @@ class GuardSubscriber implements EventSubscriberInterface
          $is = $attribute->newInstance ();
 
          foreach ($is->roles as $role) {
-            $roleString = str_starts_with ($role, 'ROLE_') ? $role : 'ROLE_' . strtoupper ($role);
+            // Convert shorthand 'admin' to 'ROLE_ADMIN' for Symfony's RoleVoter
+            $symfonyRole = str_starts_with ($role, 'ROLE_') ? $role : 'ROLE_' . strtoupper ($role);
 
-            if (!$this->authorizationChecker->isGranted ($roleString)) {
+            if (!$this->authorizationChecker->isGranted ($symfonyRole)) {
                throw new AccessDeniedException (sprintf (
                   'Access denied. Required role: %s',
-                  $roleString
+                  $role
                ));
             }
          }

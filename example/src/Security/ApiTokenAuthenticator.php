@@ -72,8 +72,7 @@ class ApiTokenAuthenticator extends AbstractAuthenticator
 
    public function onAuthenticationFailure (Request $request, AuthenticationException $exception): ?Response
    {
-      return new JsonResponse ([
-         'error' => $exception->getMessage ()
-      ], Response::HTTP_UNAUTHORIZED);
+      // Return null to let ExceptionSubscriber handle via Flash
+      return null;
    }
 }

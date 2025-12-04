@@ -343,7 +343,7 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
  *         }>,
  *     },
  *     serializer?: bool|array{ // Serializer configuration
- *         enabled?: bool, // Default: false
+ *         enabled?: bool, // Default: true
  *         enable_attributes?: bool, // Default: true
  *         name_converter?: scalar|null,
  *         circular_reference_handler?: scalar|null,
@@ -985,19 +985,7 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
  *     role_hierarchy?: array<string, string|list<scalar|null>>,
  * }
  * @psalm-type WispConfig = array{
- *     runtime?: array{
- *         version?: scalar|null, // Default: "1.0.0"
- *         default_stage?: "dev"|"test"|"prod", // Default: "prod"
- *         default_debug?: bool, // Default: false
- *         detect_stage_from_cli?: bool, // Default: true
- *         detect_debug_from_cli?: bool, // Default: true
- *         hostname_map?: array<string, "dev"|"test"|"prod">,
- *         debug_query?: bool|array{
- *             enabled?: bool, // Default: false
- *             secret?: scalar|null, // Default: null
- *             allowed_stages?: list<"dev"|"test"|"prod">,
- *         },
- *     },
+ *     version?: scalar|null, // Default: "1.0.0"
  *     envelope?: bool|array{
  *         enabled?: bool, // Default: false
  *         include_debug_info?: bool, // Default: true
@@ -1016,14 +1004,6 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
  *     framework?: FrameworkConfig,
  *     security?: SecurityConfig,
  *     wisp?: WispConfig,
- *     "when@dev"?: array{
- *         imports?: ImportsConfig,
- *         parameters?: ParametersConfig,
- *         services?: ServicesConfig,
- *         framework?: FrameworkConfig,
- *         security?: SecurityConfig,
- *         wisp?: WispConfig,
- *     },
  *     "when@prod"?: array{
  *         imports?: ImportsConfig,
  *         parameters?: ParametersConfig,
@@ -1119,7 +1099,6 @@ namespace Symfony\Component\Routing\Loader\Configurator;
  *     deprecated?: array{package:string, version:string, message?:string},
  * }
  * @psalm-type RoutesConfig = array{
- *     "when@dev"?: array<string, RouteConfig|ImportConfig|AliasConfig>,
  *     "when@prod"?: array<string, RouteConfig|ImportConfig|AliasConfig>,
  *     "when@test"?: array<string, RouteConfig|ImportConfig|AliasConfig>,
  *     ...<string, RouteConfig|ImportConfig|AliasConfig>

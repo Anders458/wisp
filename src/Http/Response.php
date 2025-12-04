@@ -3,10 +3,71 @@
 namespace Wisp\Http;
 
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
+use Wisp\Service\Flash;
 
 class Response extends \Symfony\Component\HttpFoundation\Response
 {
+   private static ?Flash $sharedFlash = null;
+
+   /**
+    * Set the shared Flash service (called by WispBundle during boot).
+    *
+    * @internal
+    */
+   public static function setSharedFlash (Flash $flash): void
+   {
+      self::$sharedFlash = $flash;
+   }
+
+   /**
+    * Add an error message to flash.
+    */
+   public function error (string $message, ?string $code = null): self
+   {
+      self::$sharedFlash?->error ($message, $code);
+      $this->ensureJsonContentType ();
+      return $this;
+   }
+
+   /**
+    * Add a warning message to flash.
+    */
+   public function warning (string $message, ?string $code = null): self
+   {
+      self::$sharedFlash?->warning ($message, $code);
+      $this->ensureJsonContentType ();
+      return $this;
+   }
+
+   /**
+    * Add an info message to flash.
+    */
+   public function info (string $message, ?string $code = null): self
+   {
+      self::$sharedFlash?->info ($message, $code);
+      $this->ensureJsonContentType ();
+      return $this;
+   }
+
+   /**
+    * Add a success message to flash.
+    */
+   public function success (string $message, ?string $code = null): self
+   {
+      self::$sharedFlash?->success ($message, $code);
+      $this->ensureJsonContentType ();
+      return $this;
+   }
+
+   private function ensureJsonContentType (): void
+   {
+      if (!$this->headers->has ('Content-Type')) {
+         $this->headers->set ('Content-Type', 'application/json');
+      }
+   }
+
    public function status (int $code): self
    {
       $this->setStatusCode ($code);
@@ -34,9 +95,11 @@ class Response extends \Symfony\Component\HttpFoundation\Response
       return $this;
    }
 
-   public function error (string $message, int $code = 400): self
+   public function empty (int $code = 204): self
    {
-      return $this->status ($code)->json ([ 'error' => $message ]);
+      $this->setStatusCode ($code);
+      $this->setContent ('');
+      return $this;
    }
 
    public function header (string $name, string $value): self
@@ -45,7 +108,20 @@ class Response extends \Symfony\Component\HttpFoundation\Response
       return $this;
    }
 
-   public function cache (int | false $ttl, bool $public = false): self
+   public function vary (string|array $headers): self
+   {
+      $existing = $this->headers->get ('Vary');
+      $headerList = is_array ($headers) ? $headers : [ $headers ];
+
+      if ($existing !== null) {
+         $headerList = array_merge (explode (', ', $existing), $headerList);
+      }
+
+      $this->headers->set ('Vary', implode (', ', array_unique ($headerList)));
+      return $this;
+   }
+
+   public function cache (int|false $ttl, bool $public = false): self
    {
       if ($ttl === false) {
          $this->headers->set ('Cache-Control', 'no-store, no-cache, must-revalidate');
@@ -70,6 +146,11 @@ class Response extends \Symfony\Component\HttpFoundation\Response
       }
 
       return $this;
+   }
+
+   public function redirect (string $url, int $status = 302): RedirectResponse
+   {
+      return new RedirectResponse ($url, $status);
    }
 
    public function download (

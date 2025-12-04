@@ -14,6 +14,7 @@ use Symfony\Component\RateLimiter\RateLimiterFactory;
 use Symfony\Component\RateLimiter\Storage\CacheStorage;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 use Wisp\Attribute\Throttle;
+use Wisp\Service\Flash;
 
 class ThrottleSubscriber implements EventSubscriberInterface
 {
@@ -22,6 +23,7 @@ class ThrottleSubscriber implements EventSubscriberInterface
    public function __construct (
       private CacheItemPoolInterface $cache,
       private TokenStorageInterface $tokenStorage,
+      private Flash $flash,
       private bool $enabled = true,
       private int $defaultLimit = 60,
       private int $defaultInterval = 60,
@@ -76,12 +78,9 @@ class ThrottleSubscriber implements EventSubscriberInterface
 
          $this->rateLimitInfo ['retry_after'] = $seconds;
 
-         $response = new JsonResponse ([
-            'error' => 'Too Many Requests',
-            'message' => 'Rate limit exceeded. Please try again later.',
-            'retry_after' => $seconds
-         ], 429);
+         $this->flash->error ('Rate limit exceeded. Please try again later.', 'rate_limit:exceeded');
 
+         $response = new JsonResponse (null, 429);
          $response->headers->set ('Retry-After', (string) $seconds);
          $response->headers->set ('X-RateLimit-Limit', (string) $this->rateLimitInfo ['limit']);
          $response->headers->set ('X-RateLimit-Remaining', '0');

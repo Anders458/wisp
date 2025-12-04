@@ -2,7 +2,7 @@
 
 namespace App\Tests\Feature;
 
-use App\Dto\CreateUserRequest;
+use App\Shape\CreateUserRequest;
 use Wisp\Testing\FixtureFactory;
 use Wisp\Testing\TestCase;
 
@@ -18,35 +18,36 @@ class UserTest extends TestCase
 
    public function test_health_check (): void
    {
-      $this->get ('/api/health')
+      $this->get ('/v1/health')
          ->assertOk ()
-         ->assertJsonPath ('data.status', 'ok');
+         ->assertJsonPath ('body.status', 'ok');
    }
 
    public function test_list_users_requires_auth (): void
    {
-      $this->get ('/api/users')
-         ->assertUnauthorized ();
+      $this->get ('/v1/users')
+         ->assertForbidden ()
+         ->assertJsonHas ('flash.errors');
    }
 
    public function test_list_users_as_authenticated_user (): void
    {
       $this->withToken ('user-token-123')
-         ->get ('/api/users')
+         ->get ('/v1/users')
          ->assertOk ()
-         ->assertJsonHas ('data.users')
-         ->assertJsonHas ('data.meta')
-         ->assertJsonCount (2, 'data.users');
+         ->assertJsonHas ('body.users')
+         ->assertJsonHas ('body.meta')
+         ->assertJsonCount (2, 'body.users');
    }
 
    public function test_create_user_with_valid_data (): void
    {
       $data = $this->fixtures->create (CreateUserRequest::class);
 
-      $this->post ('/api/users', $data)
+      $this->post ('/v1/users', $data)
          ->assertCreated ()
-         ->assertJsonPath ('data.email', $data ['email'])
-         ->assertJsonPath ('data.name', $data ['name']);
+         ->assertJsonPath ('body.email', $data ['email'])
+         ->assertJsonPath ('body.name', $data ['name']);
    }
 
    public function test_create_user_with_invalid_email (): void
@@ -55,8 +56,9 @@ class UserTest extends TestCase
          'email' => 'not-an-email'
       ]);
 
-      $this->post ('/api/users', $data)
-         ->assertStatus (422);
+      $this->post ('/v1/users', $data)
+         ->assertStatus (422)
+         ->assertJsonHas ('flash.violations');
    }
 
    public function test_create_user_with_short_password (): void
@@ -65,30 +67,47 @@ class UserTest extends TestCase
          'password' => 'short'
       ]);
 
-      $this->post ('/api/users', $data)
-         ->assertStatus (422);
+      $this->post ('/v1/users', $data)
+         ->assertStatus (422)
+         ->assertJsonHas ('flash.violations');
    }
 
    public function test_show_user (): void
    {
       $this->withToken ('user-token-123')
-         ->get ('/api/users/1')
+         ->get ('/v1/users/1')
          ->assertOk ()
-         ->assertJsonPath ('data.id', 1);
+         ->assertJsonPath ('body.id', 1);
    }
 
    public function test_admin_endpoint_forbidden_for_regular_user (): void
    {
       $this->withToken ('user-token-123')
-         ->get ('/api/admin/users')
+         ->get ('/v1/admin/users')
          ->assertForbidden ();
    }
 
    public function test_admin_endpoint_accessible_for_admin (): void
    {
       $this->withToken ('admin-token-456')
-         ->get ('/api/admin/users')
+         ->get ('/v1/admin/users')
          ->assertOk ()
-         ->assertJsonPath ('data.admin_only', true);
+         ->assertJsonPath ('body.admin_only', true);
+   }
+
+   public function test_me_without_auth (): void
+   {
+      $this->get ('/v1/users/@me')
+         ->assertUnauthorized ()
+         ->assertJsonHas ('flash.errors');
+   }
+
+   public function test_me_with_token (): void
+   {
+      $this->withToken ('user-token-123')
+         ->get ('/v1/users/@me')
+         ->assertOk ()
+         ->assertJsonHas ('body.id')
+         ->assertJsonHas ('body.roles');
    }
 }

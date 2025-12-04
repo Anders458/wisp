@@ -3,13 +3,74 @@
 namespace Wisp\Http;
 
 use Symfony\Component\HttpFoundation\Request as SymfonyRequest;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Wisp\Exception\JsonParseException;
+use Wisp\Exception\ValidationException;
 
 class Request extends SymfonyRequest
 {
+   private static ?ValidatorInterface $sharedValidator = null;
+
+   /**
+    * Set the shared Validator service (called by WispBundle).
+    *
+    * @internal
+    */
+   public static function setSharedValidator (ValidatorInterface $validator): void
+   {
+      self::$sharedValidator = $validator;
+   }
+
+   /**
+    * Validate request data against a DTO class.
+    *
+    * @template T of object
+    * @param class-string<T> $dtoClass
+    * @return T
+    * @throws ValidationException
+    */
+   public function validate (string $dtoClass): object
+   {
+      if (self::$sharedValidator === null) {
+         throw new \RuntimeException ('Validator not configured. Ensure WispBundle is properly loaded.');
+      }
+
+      $data = $this->all ();
+      $dto = $this->hydrateDto ($dtoClass, $data);
+      $violations = self::$sharedValidator->validate ($dto);
+
+      if (count ($violations) > 0) {
+         throw new ValidationException ($violations);
+      }
+
+      return $dto;
+   }
+
+   /**
+    * @template T of object
+    * @param class-string<T> $dtoClass
+    * @return T
+    */
+   private function hydrateDto (string $dtoClass, array $data): object
+   {
+      $reflection = new \ReflectionClass ($dtoClass);
+      $dto = $reflection->newInstanceWithoutConstructor ();
+
+      foreach ($reflection->getProperties () as $property) {
+         if ($property->isPublic ()) {
+            $name = $property->getName ();
+
+            if (array_key_exists ($name, $data)) {
+               $property->setValue ($dto, $data [$name]);
+            }
+         }
+      }
+
+      return $dto;
+   }
    public static function createFrom (SymfonyRequest $request): self
    {
-      return new self (
+      $instance = new self (
          $request->query->all (),
          $request->request->all (),
          $request->attributes->all (),
@@ -18,6 +79,13 @@ class Request extends SymfonyRequest
          $request->server->all (),
          $request->getContent ()
       );
+
+      // Copy session if available
+      if ($request->hasSession ()) {
+         $instance->setSession ($request->getSession ());
+      }
+
+      return $instance;
    }
 
    public function input (string $key, mixed $default = null): mixed

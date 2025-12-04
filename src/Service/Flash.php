@@ -3,22 +3,24 @@
 namespace Wisp\Service;
 
 use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\Validator\ConstraintViolationListInterface;
 
 class Flash
 {
-   /** @var string[] */
+   /** @var array<int, array{propertyPath: string, title: string}> */
+   private array $violations = [];
+
+   /** @var array<int, array{code: ?string, message: string}> */
    private array $errors = [];
 
-   /** @var string[] */
+   /** @var array<int, array{code: ?string, message: string}> */
    private array $warnings = [];
 
-   /** @var string[] */
+   /** @var array<int, array{code: ?string, message: string}> */
    private array $info = [];
 
-   /** @var string[] */
+   /** @var array<int, array{code: ?string, message: string}> */
    private array $success = [];
-
-   private int $code = 0;
 
    public function __construct (
       private RequestStack $requestStack
@@ -27,12 +29,31 @@ class Flash
       $this->loadFromSession ();
    }
 
-   public function error (string $message, ?int $code = null): self
+   /**
+    * Add a validation violation (for input validation errors).
+    */
+   public function violation (string $propertyPath, string $title): self
    {
-      $this->errors [] = $message;
+      $this->violations [] = [
+         'propertyPath' => $propertyPath,
+         'title' => $title
+      ];
 
-      if ($code !== null && $code !== 0) {
-         $this->code |= $code;
+      $this->persistToSession ();
+
+      return $this;
+   }
+
+   /**
+    * Add violations from a Symfony ConstraintViolationList.
+    */
+   public function violations (ConstraintViolationListInterface $list): self
+   {
+      foreach ($list as $violation) {
+         $this->violations [] = [
+            'propertyPath' => $violation->getPropertyPath (),
+            'title' => (string) $violation->getMessage ()
+         ];
       }
 
       $this->persistToSession ();
@@ -40,30 +61,45 @@ class Flash
       return $this;
    }
 
-   public function warning (string $message, ?int $code = null): self
+   /**
+    * Add an error message (for non-validation errors).
+    */
+   public function error (string $message, ?string $code = null): self
    {
-      $this->warnings [] = $message;
-
-      if ($code !== null && $code !== 0) {
-         $this->code |= $code;
-      }
-
+      $this->errors [] = $this->formatMessage ($code, $message);
       $this->persistToSession ();
 
       return $this;
    }
 
-   public function info (string $message): self
+   /**
+    * Add a warning message.
+    */
+   public function warning (string $message, ?string $code = null): self
    {
-      $this->info [] = $message;
+      $this->warnings [] = $this->formatMessage ($code, $message);
       $this->persistToSession ();
 
       return $this;
    }
 
-   public function success (string $message): self
+   /**
+    * Add an info message.
+    */
+   public function info (string $message, ?string $code = null): self
    {
-      $this->success [] = $message;
+      $this->info [] = $this->formatMessage ($code, $message);
+      $this->persistToSession ();
+
+      return $this;
+   }
+
+   /**
+    * Add a success message.
+    */
+   public function success (string $message, ?string $code = null): self
+   {
+      $this->success [] = $this->formatMessage ($code, $message);
       $this->persistToSession ();
 
       return $this;
@@ -71,38 +107,56 @@ class Flash
 
    public function clear (): self
    {
+      $this->violations = [];
       $this->errors = [];
       $this->warnings = [];
       $this->info = [];
       $this->success = [];
-      $this->code = 0;
 
       $session = $this->getSession ();
 
       if ($session !== null) {
-         $session->remove ('wisp:flash.errors');
-         $session->remove ('wisp:flash.warnings');
-         $session->remove ('wisp:flash.info');
-         $session->remove ('wisp:flash.success');
-         $session->remove ('wisp:flash.code');
+         $session->remove ('wisp:flash');
       }
 
       return $this;
    }
 
+   /**
+    * Consume and return all flash data, clearing it afterward.
+    */
    public function consume (): array
    {
-      $data = [
-         'errors' => $this->errors,
-         'warnings' => $this->warnings,
-         'info' => $this->info,
-         'success' => $this->success,
-         'code' => $this->code
-      ];
+      $data = [];
+
+      if (!empty ($this->violations)) {
+         $data ['violations'] = $this->violations;
+      }
+
+      if (!empty ($this->errors)) {
+         $data ['errors'] = $this->errors;
+      }
+
+      if (!empty ($this->warnings)) {
+         $data ['warnings'] = $this->warnings;
+      }
+
+      if (!empty ($this->info)) {
+         $data ['info'] = $this->info;
+      }
+
+      if (!empty ($this->success)) {
+         $data ['success'] = $this->success;
+      }
 
       $this->clear ();
 
       return $data;
+   }
+
+   public function hasViolations (): bool
+   {
+      return !empty ($this->violations);
    }
 
    public function hasErrors (): bool
@@ -117,14 +171,23 @@ class Flash
 
    public function hasMessages (): bool
    {
-      return !empty ($this->errors)
+      return !empty ($this->violations)
+         || !empty ($this->errors)
          || !empty ($this->warnings)
          || !empty ($this->info)
          || !empty ($this->success);
    }
 
    /**
-    * @return string[]
+    * @return array<int, array{propertyPath: string, title: string}>
+    */
+   public function getViolations (): array
+   {
+      return $this->violations;
+   }
+
+   /**
+    * @return array<int, array{code: ?string, message: string}>
     */
    public function getErrors (): array
    {
@@ -132,16 +195,25 @@ class Flash
    }
 
    /**
-    * @return string[]
+    * @return array<int, array{code: ?string, message: string}>
     */
    public function getWarnings (): array
    {
       return $this->warnings;
    }
 
-   public function getCode (): int
+   /**
+    * @return array{code: ?string, message: string}
+    */
+   private function formatMessage (?string $code, string $message): array
    {
-      return $this->code;
+      $item = [ 'message' => $message ];
+
+      if ($code !== null) {
+         $item ['code'] = $code;
+      }
+
+      return $item;
    }
 
    private function loadFromSession (): void
@@ -152,11 +224,12 @@ class Flash
          return;
       }
 
-      $this->errors = $session->get ('wisp:flash.errors', []);
-      $this->warnings = $session->get ('wisp:flash.warnings', []);
-      $this->info = $session->get ('wisp:flash.info', []);
-      $this->success = $session->get ('wisp:flash.success', []);
-      $this->code = $session->get ('wisp:flash.code', 0);
+      $data = $session->get ('wisp:flash', []);
+      $this->violations = $data ['violations'] ?? [];
+      $this->errors = $data ['errors'] ?? [];
+      $this->warnings = $data ['warnings'] ?? [];
+      $this->info = $data ['info'] ?? [];
+      $this->success = $data ['success'] ?? [];
    }
 
    private function persistToSession (): void
@@ -167,11 +240,13 @@ class Flash
          return;
       }
 
-      $session->set ('wisp:flash.errors', $this->errors);
-      $session->set ('wisp:flash.warnings', $this->warnings);
-      $session->set ('wisp:flash.info', $this->info);
-      $session->set ('wisp:flash.success', $this->success);
-      $session->set ('wisp:flash.code', $this->code);
+      $session->set ('wisp:flash', [
+         'violations' => $this->violations,
+         'errors' => $this->errors,
+         'warnings' => $this->warnings,
+         'info' => $this->info,
+         'success' => $this->success
+      ]);
    }
 
    private function getSession (): ?\Symfony\Component\HttpFoundation\Session\SessionInterface

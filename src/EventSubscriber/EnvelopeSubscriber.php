@@ -4,27 +4,48 @@ namespace Wisp\EventSubscriber;
 
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\Event\ResponseEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
-use Wisp\Runtime;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
+use Wisp\Http\Request;
+use Wisp\Http\Response;
 use Wisp\Service\Flash;
 
 class EnvelopeSubscriber implements EventSubscriberInterface
 {
+   private float $startTime;
+
    public function __construct (
-      private Runtime $runtime,
       private Flash $flash,
+      private ValidatorInterface $validator,
+      private string $version = '1.0.0',
+      private string $env = 'prod',
+      private bool $debug = false,
       private bool $enabled = true,
       private bool $includeDebugInfo = true
    )
    {
+      $this->startTime = microtime (true);
    }
 
    public static function getSubscribedEvents (): array
    {
       return [
+         KernelEvents::REQUEST => [ 'onRequest', 1000 ],
          KernelEvents::RESPONSE => [ 'onResponse', -10 ]
       ];
+   }
+
+   public function onRequest (RequestEvent $event): void
+   {
+      if (!$event->isMainRequest ()) {
+         return;
+      }
+
+      // Set shared services for Request/Response shortcuts
+      Response::setSharedFlash ($this->flash);
+      Request::setSharedValidator ($this->validator);
    }
 
    public function onResponse (ResponseEvent $event): void
@@ -44,7 +65,6 @@ class EnvelopeSubscriber implements EventSubscriberInterface
          return;
       }
 
-      // Skip if response is a file download
       if ($response->headers->has ('Content-Disposition')) {
          return;
       }
@@ -52,41 +72,59 @@ class EnvelopeSubscriber implements EventSubscriberInterface
       $request = $event->getRequest ();
 
       $envelope = [
-         'version' => $this->runtime->version (),
+         'version' => $this->version,
          'status' => $response->getStatusCode (),
-         'stage' => $this->runtime->stage ()->value,
+         'env' => $this->env,
+         'debug' => $this->debug,
+         'elapsed' => round (microtime (true) - $this->startTime, 4),
          'timestamp' => gmdate ('Y-m-d\TH:i:s\Z')
       ];
 
-      if ($this->includeDebugInfo && $this->runtime->isDebug ()) {
-         $envelope ['debug'] = [
-            'elapsed' => round ($this->runtime->elapsed (), 4),
-            'memory' => round (memory_get_peak_usage (true) / 1024 / 1024, 2) . ' MB'
-         ];
+      if ($this->includeDebugInfo && $this->debug) {
+         $envelope ['memory'] = round (memory_get_peak_usage (true) / 1024 / 1024) . ' MB';
       }
 
       $envelope ['meta'] = [
          'method' => $request->getMethod (),
-         'path' => $request->getPathInfo (),
-         'query' => $request->query->all () ?: null
+         'path' => $request->getPathInfo ()
       ];
 
-      // Remove null values from meta
-      $envelope ['meta'] = array_filter ($envelope ['meta'], fn ($v) => $v !== null);
+      $query = $request->query->all ();
+
+      if (!empty ($query)) {
+         $envelope ['meta'] ['query'] = $query;
+      }
+
+      $params = $request->attributes->get ('_route_params', []);
+
+      if (!empty ($params)) {
+         $envelope ['meta'] ['params'] = $params;
+      }
 
       $flashData = $this->flash->consume ();
 
-      if (!empty ($flashData ['errors']) || !empty ($flashData ['warnings']) || $flashData ['code'] !== 0) {
-         $envelope ['flash'] = array_filter ($flashData, fn ($v) => !empty ($v));
+      if (!empty ($flashData)) {
+         $envelope ['flash'] = $flashData;
       }
 
       $content = $response->getContent ();
 
-      if (!empty ($content)) {
+      if (!empty ($content) && $content !== 'null' && $content !== '[]') {
          $decoded = json_decode ($content, true);
 
-         if (json_last_error () === JSON_ERROR_NONE) {
-            $envelope ['data'] = $decoded;
+         if (json_last_error () === JSON_ERROR_NONE && $decoded !== null && $decoded !== []) {
+            // Check if this is an error response with trace - extract trace separately
+            if (isset ($decoded ['trace']) && isset ($decoded ['type'])) {
+               $trace = $decoded ['trace'];
+               unset ($decoded ['trace']);
+               $envelope ['body'] = $decoded;
+
+               if ($this->debug) {
+                  $envelope ['trace'] = $trace;
+               }
+            } else {
+               $envelope ['body'] = $decoded;
+            }
          }
       }
 

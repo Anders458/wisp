@@ -4,34 +4,19 @@ namespace Wisp\Exception;
 
 use Symfony\Component\Validator\ConstraintViolationListInterface;
 
-class ValidationException extends \RuntimeException
+class ValidationException extends \Exception
 {
    public function __construct (
-      public readonly ConstraintViolationListInterface $violations
+      private ConstraintViolationListInterface $violations,
+      string $message = 'Validation failed',
+      int $code = 422
    )
    {
-      $messages = [];
-
-      foreach ($violations as $violation) {
-         $messages [] = sprintf (
-            '%s: %s',
-            $violation->getPropertyPath (),
-            $violation->getMessage ()
-         );
-      }
-
-      parent::__construct (implode ('; ', $messages));
+      parent::__construct ($message, $code);
    }
 
-   public function toArray (): array
+   public function getViolations (): ConstraintViolationListInterface
    {
-      $errors = [];
-
-      foreach ($this->violations as $violation) {
-         $path = $violation->getPropertyPath () ?: '_root';
-         $errors [$path] [] = $violation->getMessage ();
-      }
-
-      return $errors;
+      return $this->violations;
    }
 }

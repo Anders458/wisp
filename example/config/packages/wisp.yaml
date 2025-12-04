@@ -1,10 +1,5 @@
 wisp:
-   runtime:
-      version: '1.0.0'
-      default_stage: dev
-      default_debug: true
-      detect_stage_from_cli: true
-      detect_debug_from_cli: true
+   version: '1.0.0'
 
    envelope:
       enabled: true
