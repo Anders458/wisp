@@ -245,6 +245,12 @@ abstract class TestCase extends WebTestCase
       return $this->response;
    }
 
+   protected function getHeader (string $name): ?string
+   {
+      return $this->response->headers->get ($name);
+   }
+
+
    protected function dump (): static
    {
       dump ($this->toArray ());

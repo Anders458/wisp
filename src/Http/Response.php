@@ -5,11 +5,13 @@ namespace Wisp\Http;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
+use Wisp\Pagination\Pagination;
 use Wisp\Service\Flash;
 
 class Response extends \Symfony\Component\HttpFoundation\Response
 {
    private static ?Flash $sharedFlash = null;
+   private static ?Pagination $sharedPagination = null;
 
    /**
     * Set the shared Flash service (called by WispBundle during boot).
@@ -19,6 +21,18 @@ class Response extends \Symfony\Component\HttpFoundation\Response
    public static function setSharedFlash (Flash $flash): void
    {
       self::$sharedFlash = $flash;
+   }
+
+   /**
+    * Get and consume pagination (used by EnvelopeSubscriber).
+    *
+    * @internal
+    */
+   public static function consumePagination (): ?Pagination
+   {
+      $pagination = self::$sharedPagination;
+      self::$sharedPagination = null;
+      return $pagination;
    }
 
    /**
@@ -79,6 +93,18 @@ class Response extends \Symfony\Component\HttpFoundation\Response
       $this->headers->set ('Content-Type', 'application/json');
       $this->setContent (json_encode ($data, JSON_THROW_ON_ERROR));
       return $this;
+   }
+
+   /**
+    * Set paginated JSON response.
+    *
+    * Usage:
+    *   return (new Response)->paginated ($items, $pagination);
+    */
+   public function paginated (array $data, Pagination $pagination): self
+   {
+      self::$sharedPagination = $pagination;
+      return $this->json ($data);
    }
 
    public function text (string $content): self

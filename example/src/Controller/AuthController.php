@@ -6,12 +6,14 @@ use App\Shape\LoginRequest;
 use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
 use Symfony\Component\Routing\Attribute\Route;
+use Wisp\Attribute\Log;
 use Wisp\Attribute\Throttle;
 use Wisp\Http\Request;
 use Wisp\Http\Response;
 use Wisp\Service\Flash;
 
 #[Route ('/v1/auth')]
+#[Log (redact: [ 'password' ], include: [ 'request' ])]
 class AuthController
 {
    // Demo users for example purposes

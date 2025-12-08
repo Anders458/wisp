@@ -80,6 +80,11 @@ class EnvelopeSubscriber implements EventSubscriberInterface
          'timestamp' => gmdate ('Y-m-d\TH:i:s\Z')
       ];
 
+      $requestId = $request->attributes->get ('request_id');
+      if ($requestId) {
+         $envelope ['request_id'] = $requestId;
+      }
+
       if ($this->includeDebugInfo && $this->debug) {
          $envelope ['memory'] = round (memory_get_peak_usage (true) / 1024 / 1024) . ' MB';
       }
@@ -105,6 +110,12 @@ class EnvelopeSubscriber implements EventSubscriberInterface
 
       if (!empty ($flashData)) {
          $envelope ['flash'] = $flashData;
+      }
+
+      $pagination = Response::consumePagination ();
+
+      if ($pagination !== null) {
+         $envelope ['pagination'] = $pagination->toArray ();
       }
 
       $content = $response->getContent ();

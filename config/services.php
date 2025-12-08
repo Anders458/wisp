@@ -2,10 +2,14 @@
 
 namespace Symfony\Component\DependencyInjection\Loader\Configurator;
 
+use Wisp\Command\DebugRequestCommand;
 use Wisp\Command\TestCommand;
+use Wisp\EventSubscriber\CacheSubscriber;
 use Wisp\EventSubscriber\EnvelopeSubscriber;
 use Wisp\EventSubscriber\ExceptionSubscriber;
 use Wisp\EventSubscriber\GuardSubscriber;
+use Wisp\EventSubscriber\LogSubscriber;
+use Wisp\EventSubscriber\RequestIdSubscriber;
 use Wisp\EventSubscriber\ThrottleSubscriber;
 use Wisp\Service\Flash;
 use Wisp\ValueResolver\RequestResolver;
@@ -60,7 +64,26 @@ return function (ContainerConfigurator $container): void {
    $services->set (RequestResolver::class)
       ->tag ('controller.argument_value_resolver', [ 'priority' => 200 ]);
 
+   // Request ID Subscriber
+   $services->set (RequestIdSubscriber::class)
+      ->tag ('kernel.event_subscriber');
+
+   // Log Subscriber
+   $services->set (LogSubscriber::class)
+      ->args ([
+         service ('logger')
+      ])
+      ->tag ('kernel.event_subscriber');
+
    // Test Command
    $services->set (TestCommand::class)
       ->tag ('console.command');
+
+   // Debug Request Command
+   $services->set (DebugRequestCommand::class)
+      ->tag ('console.command');
+
+   // Cache Subscriber
+   $services->set (CacheSubscriber::class)
+      ->tag ('kernel.event_subscriber');
 };

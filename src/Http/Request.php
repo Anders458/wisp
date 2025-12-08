@@ -6,6 +6,7 @@ use Symfony\Component\HttpFoundation\Request as SymfonyRequest;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Wisp\Exception\JsonParseException;
 use Wisp\Exception\ValidationException;
+use Wisp\Pagination\Pagination;
 
 class Request extends SymfonyRequest
 {
@@ -176,5 +177,17 @@ class Request extends SymfonyRequest
       }
 
       return null;
+   }
+
+   /**
+    * Create pagination from query parameters.
+    *
+    * Auto-detects offset vs cursor mode:
+    *   ?page=2&limit=20       → offset mode
+    *   ?cursor=abc&limit=20   → cursor mode
+    */
+   public function paginate (int $defaultLimit = 20): Pagination
+   {
+      return Pagination::fromQuery ($this->query->all (), $defaultLimit);
    }
 }
