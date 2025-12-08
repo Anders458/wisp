@@ -5,13 +5,13 @@ namespace Wisp\Pagination;
 /**
  * Pagination metadata for API responses.
  *
- * Offset mode:
- *   $pagination = Pagination::forOffset (page: 2, limit: 20)
- *      ->withTotal (150);
+ * Offset mode (small tables with COUNT):
+ *   $pagination = $request->paginate ()
+ *      ->withTotal ($count);
  *
- * Cursor mode:
- *   $pagination = Pagination::forCursor (cursor: 'abc123', limit: 20)
- *      ->withCursors (next: 'def456', prev: 'xyz789');
+ * Cursor mode (large tables, no COUNT):
+ *   $pagination = $request->paginate ()
+ *      ->withCursors (next: $lastId);
  */
 class Pagination
 {
@@ -23,8 +23,7 @@ class Pagination
       private ?int $total = null,
       private ?int $totalPages = null,
       private ?string $nextCursor = null,
-      private ?string $prevCursor = null,
-      private bool $hasMore = false
+      private ?string $prevCursor = null
    ) {}
 
    public static function forOffset (int $page, int $limit): self
@@ -69,12 +68,7 @@ class Pagination
    {
       $clone = clone $this;
       $clone->total = $total;
-
-      if ($this->mode === 'offset') {
-         $clone->totalPages = (int) ceil ($total / $this->limit);
-         $clone->hasMore = $this->page < $clone->totalPages;
-      }
-
+      $clone->totalPages = (int) ceil ($total / $this->limit);
       return $clone;
    }
 
@@ -83,14 +77,6 @@ class Pagination
       $clone = clone $this;
       $clone->nextCursor = $next;
       $clone->prevCursor = $prev;
-      $clone->hasMore = $next !== null;
-      return $clone;
-   }
-
-   public function withHasMore (bool $hasMore): self
-   {
-      $clone = clone $this;
-      $clone->hasMore = $hasMore;
       return $clone;
    }
 
@@ -136,13 +122,14 @@ class Pagination
 
    public function hasMore (): bool
    {
-      return $this->hasMore;
+      if ($this->mode === 'cursor') {
+         return $this->nextCursor !== null;
+      }
+
+      return $this->totalPages !== null && $this->page < $this->totalPages;
    }
 
-   /**
-    * Get SQL offset for offset mode.
-    */
-   public function sqlOffset (): int
+   public function offset (): int
    {
       if ($this->mode !== 'offset') {
          return 0;
@@ -159,7 +146,7 @@ class Pagination
       $data = [
          'mode' => $this->mode,
          'limit' => $this->limit,
-         'has_more' => $this->hasMore
+         'has_more' => $this->hasMore ()
       ];
 
       if ($this->mode === 'offset') {

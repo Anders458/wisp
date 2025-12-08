@@ -67,7 +67,7 @@ class ProductController
          // Offset-based
          $items = array_slice (
             $this->products,
-            $pagination->sqlOffset (),
+            $pagination->offset (),
             $pagination->limit ()
          );
 
