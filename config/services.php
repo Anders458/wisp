@@ -36,6 +36,7 @@ return function (ContainerConfigurator $container): void {
          '%kernel.environment%',
          '%kernel.debug%',
          '%wisp.envelope.enabled%',
+         '%wisp.envelope.image%',
          '%wisp.envelope.include_debug_info%'
       ])
       ->tag ('kernel.event_subscriber');

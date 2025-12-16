@@ -23,6 +23,7 @@ class EnvelopeSubscriber implements EventSubscriberInterface
       private string $env = 'prod',
       private bool $debug = false,
       private bool $enabled = true,
+      private ?string $image = null,
       private bool $includeDebugInfo = true
    )
    {
@@ -79,6 +80,10 @@ class EnvelopeSubscriber implements EventSubscriberInterface
          'elapsed' => round (microtime (true) - $this->startTime, 4),
          'timestamp' => gmdate ('Y-m-d\TH:i:s\Z')
       ];
+
+      if ($this->image) {
+         $envelope ['image'] = $this->image;
+      }
 
       $requestId = $request->attributes->get ('request_id');
       if ($requestId) {
