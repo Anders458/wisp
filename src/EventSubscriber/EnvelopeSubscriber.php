@@ -72,9 +72,12 @@ class EnvelopeSubscriber implements EventSubscriberInterface
 
       $request = $event->getRequest ();
 
+      $statusCode = $response->getStatusCode ();
+
       $envelope = [
          'version' => $this->version,
-         'status' => $response->getStatusCode (),
+         'code' => $statusCode,
+         'status' => \Symfony\Component\HttpFoundation\Response::$statusTexts [$statusCode] ?? 'Unknown',
          'env' => $this->env,
          'debug' => $this->debug,
          'elapsed' => round (microtime (true) - $this->startTime, 4),
