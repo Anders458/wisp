@@ -56,6 +56,14 @@ class ExceptionSubscriber implements EventSubscriberInterface
             $event->setResponse (new JsonResponse (null, 400));
             return;
          }
+
+         // Handle all other HttpExceptions (401, 403, 404, etc.)
+         // Convert to flash message to avoid Symfony's RFC 7807 problem details in body
+         $statusCode = $exception->getStatusCode ();
+         $errorCode = $this->getErrorCodeForStatus ($statusCode);
+         $this->flash->error ($exception->getMessage () ?: $this->getDefaultMessageForStatus ($statusCode), $errorCode);
+         $event->setResponse (new JsonResponse (null, $statusCode));
+         return;
       }
 
       // Handle AccessDeniedException
@@ -70,5 +78,35 @@ class ExceptionSubscriber implements EventSubscriberInterface
          $this->flash->error ($exception->getMessage () ?: 'Authentication required', 'auth:unauthenticated');
          $event->setResponse (new JsonResponse (null, 401));
       }
+   }
+
+   private function getErrorCodeForStatus (int $status): string
+   {
+      return match ($status) {
+         400 => 'request:bad_request',
+         401 => 'auth:unauthenticated',
+         403 => 'auth:forbidden',
+         404 => 'resource:not_found',
+         405 => 'request:method_not_allowed',
+         409 => 'resource:conflict',
+         422 => 'validation:failed',
+         429 => 'request:rate_limited',
+         default => 'error:http_' . $status
+      };
+   }
+
+   private function getDefaultMessageForStatus (int $status): string
+   {
+      return match ($status) {
+         400 => 'Bad request',
+         401 => 'Authentication required',
+         403 => 'Access denied',
+         404 => 'Resource not found',
+         405 => 'Method not allowed',
+         409 => 'Resource conflict',
+         422 => 'Validation failed',
+         429 => 'Too many requests',
+         default => 'An error occurred'
+      };
    }
 }

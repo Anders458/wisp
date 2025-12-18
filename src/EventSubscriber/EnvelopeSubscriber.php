@@ -138,7 +138,8 @@ class EnvelopeSubscriber implements EventSubscriberInterface
                unset ($decoded ['trace']);
                $envelope ['body'] = $decoded;
 
-               if ($this->debug) {
+               // Only include trace for 5xx errors in debug mode
+               if ($this->debug && $statusCode >= 500) {
                   $envelope ['trace'] = $trace;
                }
             } else {
