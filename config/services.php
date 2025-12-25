@@ -52,7 +52,6 @@ return function (ContainerConfigurator $container): void {
       ->args ([
          service ('cache.app'),
          service ('security.token_storage'),
-         service (Flash::class),
          '%wisp.throttle.enabled%',
          '%wisp.throttle.limit%',
          '%wisp.throttle.interval%',

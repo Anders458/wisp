@@ -6,7 +6,6 @@ use Psr\Cache\CacheItemPoolInterface;
 use ReflectionClass;
 use ReflectionMethod;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
-use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Event\ControllerEvent;
 use Symfony\Component\HttpKernel\Event\ResponseEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
@@ -14,7 +13,6 @@ use Symfony\Component\RateLimiter\RateLimiterFactory;
 use Symfony\Component\RateLimiter\Storage\CacheStorage;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 use Wisp\Attribute\Throttle;
-use Wisp\Service\Flash;
 
 class ThrottleSubscriber implements EventSubscriberInterface
 {
@@ -23,7 +21,6 @@ class ThrottleSubscriber implements EventSubscriberInterface
    public function __construct (
       private CacheItemPoolInterface $cache,
       private TokenStorageInterface $tokenStorage,
-      private Flash $flash,
       private bool $enabled = true,
       private int $defaultLimit = 60,
       private int $defaultInterval = 60,
@@ -83,15 +80,12 @@ class ThrottleSubscriber implements EventSubscriberInterface
 
          $this->rateLimitInfo ['retry_after'] = $seconds;
 
-         $this->flash->error ('Rate limit exceeded. Please try again later.', 'rate_limit:exceeded');
-
-         $response = new JsonResponse (null, 429);
-         $response->headers->set ('Retry-After', (string) $seconds);
-         $response->headers->set ('X-RateLimit-Limit', (string) $this->rateLimitInfo ['limit']);
-         $response->headers->set ('X-RateLimit-Remaining', '0');
-         $response->headers->set ('X-RateLimit-Reset', (string) $this->rateLimitInfo ['reset']);
-
-         $event->setController (fn () => $response);
+         // Throw TooManyRequestsHttpException - ExceptionSubscriber handles the response
+         // This prevents argument resolvers from running (which could throw their own exceptions)
+         throw new \Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException (
+            $seconds,
+            'Rate limit exceeded. Please try again later.'
+         );
       }
    }
 

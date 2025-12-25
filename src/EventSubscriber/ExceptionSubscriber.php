@@ -7,6 +7,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
+use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
 use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
@@ -47,6 +48,18 @@ class ExceptionSubscriber implements EventSubscriberInterface
          if ($previous instanceof ValidationFailedException) {
             $this->flash->violations ($previous->getViolations ());
             $event->setResponse (new JsonResponse (null, $exception->getStatusCode ()));
+            return;
+         }
+
+         // Handle TooManyRequestsHttpException (rate limiting)
+         if ($exception instanceof TooManyRequestsHttpException) {
+            $this->flash->error ($exception->getMessage () ?: 'Too many requests', 'rate_limit:exceeded');
+            $response = new JsonResponse (null, 429);
+            $retryAfter = $exception->getHeaders () ['Retry-After'] ?? null;
+            if ($retryAfter) {
+               $response->headers->set ('Retry-After', $retryAfter);
+            }
+            $event->setResponse ($response);
             return;
          }
 
