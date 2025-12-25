@@ -11,6 +11,10 @@ wisp:
       interval: 60
       strategy: ip
 
+   bearer:
+      enabled: true
+      decoder: App\Security\TestBearerDecoder
+
 when@test:
    wisp:
       throttle:

@@ -988,6 +988,7 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
  *     version?: scalar|null, // Default: "1.0.0"
  *     envelope?: bool|array{
  *         enabled?: bool, // Default: false
+ *         image?: scalar|null, // Default: null
  *         include_debug_info?: bool, // Default: true
  *     },
  *     throttle?: bool|array{
@@ -995,6 +996,10 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
  *         limit?: int, // Default: 60
  *         interval?: int, // Default: 60
  *         strategy?: "ip"|"user"|"ip_user"|"route"|"ip_route", // Default: "ip"
+ *     },
+ *     bearer?: bool|array{
+ *         enabled?: bool, // Default: false
+ *         decoder?: scalar|null, // Default: null
  *     },
  * }
  * @psalm-type MonologConfig = array{
