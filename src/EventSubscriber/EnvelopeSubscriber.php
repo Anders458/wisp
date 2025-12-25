@@ -10,6 +10,7 @@ use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Wisp\Http\Request;
 use Wisp\Http\Response;
+use Wisp\Security\BearerDecoderInterface;
 use Wisp\Service\Flash;
 
 class EnvelopeSubscriber implements EventSubscriberInterface
@@ -24,7 +25,8 @@ class EnvelopeSubscriber implements EventSubscriberInterface
       private bool $debug = false,
       private bool $enabled = true,
       private ?string $image = null,
-      private bool $includeDebugInfo = true
+      private bool $includeDebugInfo = true,
+      private ?BearerDecoderInterface $bearerDecoder = null
    )
    {
       $this->startTime = microtime (true);
@@ -47,6 +49,7 @@ class EnvelopeSubscriber implements EventSubscriberInterface
       // Set shared services for Request/Response shortcuts
       Response::setSharedFlash ($this->flash);
       Request::setSharedValidator ($this->validator);
+      Request::setSharedBearerDecoder ($this->bearerDecoder);
    }
 
    public function onResponse (ResponseEvent $event): void

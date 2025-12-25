@@ -78,7 +78,7 @@ HELP);
          return $this->executeEndpointTests ($io, $input, strtoupper ($method), $path);
       }
 
-      return $this->executeTestSuite ($io, $input);
+      return $this->executeTestSuite ($io, $input, $output);
    }
 
    private function executeEndpointTests (SymfonyStyle $io, InputInterface $input, string $method, string $path): int
@@ -781,7 +781,7 @@ HELP);
       return null;
    }
 
-   private function executeTestSuite (SymfonyStyle $io, InputInterface $input): int
+   private function executeTestSuite (SymfonyStyle $io, InputInterface $input, OutputInterface $output): int
    {
       $filter = $input->getOption ('filter');
       $projectDir = $this->kernel->getProjectDir ();
@@ -803,6 +803,11 @@ HELP);
       if ($filter !== null) {
          $command [] = '--filter';
          $command [] = $filter;
+      }
+
+      // Pass through verbosity to PHPUnit
+      if ($output->isVerbose ()) {
+         $command [] = '--testdox';
       }
 
       $io->section ('Running test suite');

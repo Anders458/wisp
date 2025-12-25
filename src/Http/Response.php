@@ -128,6 +128,17 @@ class Response extends \Symfony\Component\HttpFoundation\Response
       return $this;
    }
 
+   /**
+    * Return a 202 Accepted response for async job processing.
+    */
+   public function accepted (string $jobId): self
+   {
+      $this->setStatusCode (202);
+      return $this->json ([
+         'job:id' => $jobId
+      ]);
+   }
+
    public function header (string $name, string $value): self
    {
       $this->headers->set ($name, $value);

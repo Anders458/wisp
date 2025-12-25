@@ -6,6 +6,7 @@ use Symfony\Component\Config\Definition\Configurator\DefinitionConfigurator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 use Symfony\Component\HttpKernel\Bundle\AbstractBundle;
+use Wisp\Security\BearerDecoderInterface;
 
 class Bundle extends AbstractBundle
 {
@@ -34,6 +35,12 @@ class Bundle extends AbstractBundle
                   ->end ()
                ->end ()
             ->end ()
+            ->arrayNode ('bearer')
+               ->canBeEnabled ()
+               ->children ()
+                  ->scalarNode ('decoder')->defaultNull ()->end ()
+               ->end ()
+            ->end ()
          ->end ()
       ;
    }
@@ -51,6 +58,13 @@ class Bundle extends AbstractBundle
          ->set ('wisp.throttle.limit', $config ['throttle'] ['limit'])
          ->set ('wisp.throttle.interval', $config ['throttle'] ['interval'])
          ->set ('wisp.throttle.strategy', $config ['throttle'] ['strategy'])
+         ->set ('wisp.bearer.enabled', $config ['bearer'] ['enabled'])
+         ->set ('wisp.bearer.decoder', $config ['bearer'] ['decoder'])
       ;
+
+      // Create alias for BearerDecoderInterface if decoder is configured
+      if ($config ['bearer'] ['enabled'] && $config ['bearer'] ['decoder'] !== null) {
+         $builder->setAlias (BearerDecoderInterface::class, $config ['bearer'] ['decoder']);
+      }
    }
 }

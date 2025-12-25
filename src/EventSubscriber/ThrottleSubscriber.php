@@ -62,6 +62,11 @@ class ThrottleSubscriber implements EventSubscriberInterface
          );
       }
 
+      // Skip rate limiting if unlimited (limit = 0)
+      if ($throttle->isUnlimited ()) {
+         return;
+      }
+
       $key = $this->resolveKey ($throttle, $request);
       $limiter = $this->createLimiter ($throttle);
       $limit = $limiter->create ($key)->consume ();
@@ -124,20 +129,59 @@ class ThrottleSubscriber implements EventSubscriberInterface
    private function findThrottleAttribute (string $class, string $method): ?Throttle
    {
       $methodReflection = new ReflectionMethod ($class, $method);
-      $methodAttributes = $methodReflection->getAttributes (Throttle::class);
-
-      if (!empty ($methodAttributes)) {
-         return $methodAttributes [0]->newInstance ();
-      }
-
       $classReflection = new ReflectionClass ($class);
-      $classAttributes = $classReflection->getAttributes (Throttle::class);
 
-      if (!empty ($classAttributes)) {
-         return $classAttributes [0]->newInstance ();
+      // Collect all throttle attributes from method and class
+      $throttles = [];
+
+      foreach ($methodReflection->getAttributes (Throttle::class) as $attr) {
+         $throttles [] = $attr->newInstance ();
       }
 
-      return null;
+      foreach ($classReflection->getAttributes (Throttle::class) as $attr) {
+         $throttles [] = $attr->newInstance ();
+      }
+
+      if (empty ($throttles)) {
+         return null;
+      }
+
+      return $this->selectThrottleForUser ($throttles);
+   }
+
+   /**
+    * Select the appropriate throttle based on user roles.
+    * Priority: role-specific > default (no role)
+    *
+    * @param Throttle[] $throttles
+    */
+   private function selectThrottleForUser (array $throttles): Throttle
+   {
+      $token = $this->tokenStorage->getToken ();
+      $userRoles = $token?->getRoleNames () ?? [];
+
+      // First, look for a role-specific throttle that matches
+      foreach ($throttles as $throttle) {
+         if (!$throttle->isDefault ()) {
+            foreach ($throttle->for as $role) {
+               $symfonyRole = str_starts_with ($role, 'ROLE_') ? $role : 'ROLE_' . strtoupper ($role);
+
+               if (in_array ($symfonyRole, $userRoles, true)) {
+                  return $throttle;
+               }
+            }
+         }
+      }
+
+      // Fall back to default throttle (one without 'for')
+      foreach ($throttles as $throttle) {
+         if ($throttle->isDefault ()) {
+            return $throttle;
+         }
+      }
+
+      // If no default, use the first one
+      return $throttles [0];
    }
 
    private function createLimiter (Throttle $throttle): RateLimiterFactory

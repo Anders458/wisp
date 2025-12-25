@@ -11,6 +11,11 @@ use Wisp\EventSubscriber\GuardSubscriber;
 use Wisp\EventSubscriber\LogSubscriber;
 use Wisp\EventSubscriber\RequestIdSubscriber;
 use Wisp\EventSubscriber\ThrottleSubscriber;
+use Wisp\EventSubscriber\VersionSubscriber;
+use Wisp\EventSubscriber\HookSubscriber;
+use Wisp\EventSubscriber\BearerSubscriber;
+use Wisp\Routing\VersionedAttributeLoader;
+use Wisp\Security\BearerDecoderInterface;
 use Wisp\Service\Flash;
 use Wisp\ValueResolver\RequestResolver;
 
@@ -37,7 +42,8 @@ return function (ContainerConfigurator $container): void {
          '%kernel.debug%',
          '%wisp.envelope.enabled%',
          '%wisp.envelope.image%',
-         '%wisp.envelope.include_debug_info%'
+         '%wisp.envelope.include_debug_info%',
+         service (BearerDecoderInterface::class)->nullOnInvalid ()
       ])
       ->tag ('kernel.event_subscriber');
 
@@ -87,4 +93,24 @@ return function (ContainerConfigurator $container): void {
    // Cache Subscriber
    $services->set (CacheSubscriber::class)
       ->tag ('kernel.event_subscriber');
+
+   // Version Subscriber (API versioning via #[Version] attribute)
+   $services->set (VersionSubscriber::class)
+      ->tag ('kernel.event_subscriber');
+
+   // Hook Subscriber (#[Before] and #[After] controller hooks)
+   $services->set (HookSubscriber::class)
+      ->args ([
+         service ('service_container')
+      ])
+      ->tag ('kernel.event_subscriber');
+
+   // Bearer Subscriber (#[Bearer] token authentication)
+   $services->set (BearerSubscriber::class)
+      ->args ([
+         service (BearerDecoderInterface::class)->nullOnInvalid (),
+         service (Flash::class)
+      ])
+      ->tag ('kernel.event_subscriber');
+
 };

@@ -7,10 +7,14 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Wisp\Exception\JsonParseException;
 use Wisp\Exception\ValidationException;
 use Wisp\Pagination\Pagination;
+use Wisp\Security\BearerDecoderInterface;
 
 class Request extends SymfonyRequest
 {
    private static ?ValidatorInterface $sharedValidator = null;
+   private static ?BearerDecoderInterface $sharedBearerDecoder = null;
+   private ?array $decodedBearer = null;
+   private bool $bearerDecoded = false;
 
    /**
     * Set the shared Validator service (called by WispBundle).
@@ -20,6 +24,16 @@ class Request extends SymfonyRequest
    public static function setSharedValidator (ValidatorInterface $validator): void
    {
       self::$sharedValidator = $validator;
+   }
+
+   /**
+    * Set the shared BearerDecoder service (called by WispBundle).
+    *
+    * @internal
+    */
+   public static function setSharedBearerDecoder (?BearerDecoderInterface $decoder): void
+   {
+      self::$sharedBearerDecoder = $decoder;
    }
 
    /**
@@ -168,7 +182,10 @@ class Request extends SymfonyRequest
       return str_contains ($this->headers->get ('Accept', ''), 'application/json');
    }
 
-   public function bearerToken (): ?string
+   /**
+    * Get the raw bearer token string.
+    */
+   public function bearerRaw (): ?string
    {
       $header = $this->headers->get ('Authorization', '');
 
@@ -177,6 +194,53 @@ class Request extends SymfonyRequest
       }
 
       return null;
+   }
+
+   /**
+    * Get decoded bearer token claims, or a specific claim value.
+    *
+    * @param string|null $claim Specific claim to retrieve (null = all claims)
+    * @param mixed $default Default value if claim not found
+    * @return mixed All claims array, specific claim value, or default
+    */
+   public function bearer (?string $claim = null, mixed $default = null): mixed
+   {
+      $claims = $this->decodeBearerToken ();
+
+      if ($claims === null) {
+         return $claim === null ? null : $default;
+      }
+
+      if ($claim === null) {
+         return $claims;
+      }
+
+      return $claims [$claim] ?? $default;
+   }
+
+   /**
+    * Check if the bearer token is present and valid.
+    */
+   public function bearerValid (): bool
+   {
+      return $this->decodeBearerToken () !== null;
+   }
+
+   private function decodeBearerToken (): ?array
+   {
+      // Cache the decoded result
+      if ($this->bearerDecoded) {
+         return $this->decodedBearer;
+      }
+
+      $this->bearerDecoded = true;
+      $token = $this->bearerRaw ();
+
+      if ($token === null || self::$sharedBearerDecoder === null) {
+         return $this->decodedBearer = null;
+      }
+
+      return $this->decodedBearer = self::$sharedBearerDecoder->decode ($token);
    }
 
    /**
